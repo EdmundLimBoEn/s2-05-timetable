@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>S2-05 · Term 2 2026</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="title">S2-05<span class="cursor">█</span></h1>
+      <span class="today-pill" id="todayPill"></span>
+    </div>
+    <div class="topbar-right">
+      <button class="clr-btn" id="btnTheme" title="Customise colours" aria-label="Open colour customiser">CLR</button>
+      <div class="tog-group" role="group" aria-label="Week selector">
+        <div class="tog-pill" id="pillWeek"></div>
+        <button class="tog-btn" id="btnOdd" onclick="setWeek('odd')" aria-pressed="true">ODD</button>
+        <button class="tog-btn" id="btnEven" onclick="setWeek('even')" aria-pressed="false">EVEN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="now-bar" id="nowBar" style="display:none">
+    <span class="now-dot"></span>
+    <span class="now-label">NOW</span>
+    <span class="now-subject" id="nowSubj"></span>
+    <span class="now-countdown" id="nowCountdown"></span>
+  </div>
+
+  <div class="next-bar" id="nextBar" style="display:none">
+    <span class="next-label">NEXT</span>
+    <span class="next-subject" id="nextSubj"></span>
+    <span class="next-time" id="nextTime"></span>
+  </div>
+
+  <main class="table-wrap" id="tableWrap">
+    <div class="time-line" id="tl" style="display:none"></div>
+  </main>
+
+  <footer class="bottom">S2-05 · TERM 2 2026</footer>
+
+  <div class="theme-overlay" id="themeOverlay"></div>
+  <div class="theme-panel" id="themePanel" aria-hidden="true">
+    <div class="theme-inner">
+      <div class="theme-hdr">
+        <span class="theme-title">CUSTOMIZE</span>
+        <button class="theme-close" id="themeClose">✕</button>
+      </div>
+      <div class="theme-grid" id="themeGrid"></div>
+      <div class="theme-actions">
+        <button class="theme-btn" id="themeCopyLink">COPY LINK</button>
+        <button class="theme-btn" id="themeReset">RESET ALL</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
+  </script>
+</body>
+</html>

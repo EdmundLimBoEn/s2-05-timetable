@@ -1,0 +1,12 @@
+{
+  "name": "S2-05 Timetable",
+  "short_name": "S2-05",
+  "description": "S2-05 SST Singapore school timetable — Term 2 2026",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
