@@ -183,6 +183,7 @@ body {
 /* ── Table wrap ────────────────────────────────────────────── */
 .table-wrap {
   flex: 1;
+  min-height: 0;
   overflow-x: auto;
   overflow-y: visible;
   padding: 10px 14px 20px;
@@ -229,8 +230,8 @@ body {
 /* ── Cells ──────────────────────────────────────────────────── */
 td {
   padding: 3px;
-  height: 64px;
-  vertical-align: stretch;
+  height: max(64px, calc((100svh - 230px) / 5));
+  vertical-align: top;
 }
 
 .td-day {
@@ -254,7 +255,8 @@ tr.today-row .td-day {
 }
 
 .cell {
-  height: 58px;
+  height: 100%;
+  min-height: 54px;
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -570,4 +572,166 @@ tr.today-row td .cell:not(.empty) {
   color: #fff;
   background: rgba(255,59,59,0.12);
   border-color: rgba(255,59,59,0.3);
+}
+
+/* ── Settings sections ──────────────────────────────────────── */
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-section-hd {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.18);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── Demo banner ─────────────────────────────────────────────── */
+.demo-banner {
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  background: rgba(255,59,59,0.07);
+  border-bottom: 1px solid rgba(255,59,59,0.14);
+  flex-shrink: 0;
+}
+
+.demo-badge {
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+.demo-banner-info {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: rgba(255,59,59,0.65);
+  letter-spacing: 0.1em;
+}
+
+/* ── Demo toggle ─────────────────────────────────────────────── */
+.demo-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0 12px;
+  gap: 12px;
+}
+
+.demo-toggle-label {
+  font-family: 'VT323', monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  color: rgba(200,200,200,0.55);
+}
+
+.toggle-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle-wrap input[type=checkbox] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-track {
+  display: block;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  transition: background .25s, border-color .25s;
+  cursor: pointer;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  transition: transform .25s, background .25s;
+}
+.toggle-wrap input:checked + .toggle-track {
+  background: rgba(255,59,59,0.25);
+  border-color: rgba(255,59,59,0.45);
+}
+.toggle-wrap input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(18px);
+  background: var(--red);
+}
+
+/* ── Demo controls ───────────────────────────────────────────── */
+.demo-controls {
+  padding-top: 2px;
+}
+
+.demo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.demo-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.2);
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.demo-chip-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.demo-chip {
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.demo-chip:hover { color: rgba(255,255,255,0.65); }
+.demo-chip.active {
+  color: #fff;
+  background: rgba(255,59,59,0.1);
+  border-color: rgba(255,59,59,0.35);
+}
+
+.demo-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.7);
+  padding: 4px 8px;
+  letter-spacing: 0.05em;
+}
+.demo-time:focus {
+  outline: 1px solid rgba(255,59,59,0.35);
+  border-color: rgba(255,59,59,0.25);
+}
+.demo-time::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
 }

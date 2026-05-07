@@ -185,8 +185,11 @@ const TIMETABLE = {
 }
 
 // ── State ──────────────────────────────────────────────────────
-let week = 'odd'
+let week         = 'odd'
 let currentTheme = {}
+let demoMode     = false
+let demoDay      = 3    // Wednesday
+let demoMins     = 705  // 11:45
 
 // ── DOM refs ───────────────────────────────────────────────────
 const wrap = document.getElementById('tableWrap')
@@ -199,6 +202,10 @@ const DAYS_SH  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 document.getElementById('todayPill').textContent =
   DAYS_SH[todayDow] + ' · ' +
   nowDate.toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })
+
+// ── Demo helpers ───────────────────────────────────────────────
+function getEffectiveDow()  { return demoMode ? demoDay  : todayDow  }
+function getEffectiveMins() { return demoMode ? demoMins : nowMins() }
 
 // ── Theme helpers ──────────────────────────────────────────────
 function hexToRgb(hex) {
@@ -297,7 +304,7 @@ function buildTable(wk) {
   html += '</tr></thead><tbody>'
 
   TIMETABLE[wk].forEach((blocks, di) => {
-    const isToday = (di + 1) === todayDow
+    const isToday = (di + 1) === getEffectiveDow()
     html += `<tr${isToday ? ' class="today-row"' : ''}>`
     html += `<td class="td-day">${DAY_LABELS[di]}</td>`
 
@@ -381,7 +388,7 @@ function colPositions() {
 }
 
 function tick() {
-  const nm           = nowMins()
+  const nm           = getEffectiveMins()
   const nowBar       = document.getElementById('nowBar')
   const nowSubj      = document.getElementById('nowSubj')
   const nowCountdown = document.getElementById('nowCountdown')
@@ -389,7 +396,7 @@ function tick() {
   const nextSubj     = document.getElementById('nextSubj')
   const nextTime     = document.getElementById('nextTime')
 
-  const weekday = todayDow >= 1 && todayDow <= 5
+  const weekday = getEffectiveDow() >= 1 && getEffectiveDow() <= 5
   const inHours = nm >= ALL_MINS[0] && nm <= END_MIN
 
   document.querySelectorAll('.cell.now').forEach(c => c.classList.remove('now'))
@@ -408,7 +415,7 @@ function tick() {
     if (nm >= ALL_MINS[i] && nm < e) { nowP = i; break }
   }
 
-  const di  = todayDow - 1
+  const di  = getEffectiveDow() - 1
   const day = TIMETABLE[week]?.[di]
 
   if (day && nowP >= 0) {
@@ -504,31 +511,41 @@ function tick() {
   }
 }
 
-// ── Theme panel ────────────────────────────────────────────────
-function buildThemePanel() {
+// ── Settings panel ─────────────────────────────────────────────
+function buildSettingsPanel() {
+  // Colour grid
   const grid = document.getElementById('themeGrid')
-  if (!grid) return
-  const full = { ...THEME_VARS, ...currentTheme }
-  grid.innerHTML = Object.entries(THEME_VARS).map(([k]) => `
-    <label class="theme-row">
-      <span class="theme-var-name">${THEME_LABELS[k] || k}</span>
-      <input type="color" class="theme-color-input" data-key="${k}" value="${full[k]}">
-    </label>
-  `).join('')
-
-  grid.querySelectorAll('input[type=color]').forEach(inp => {
-    inp.addEventListener('input', e => {
-      currentTheme[e.target.dataset.key] = e.target.value
-      applyTheme(currentTheme)
-      const code = encodeTheme(currentTheme)
-      if (code) localStorage.setItem('theme', code)
-      else localStorage.removeItem('theme')
+  if (grid) {
+    const full = { ...THEME_VARS, ...currentTheme }
+    grid.innerHTML = Object.entries(THEME_VARS).map(([k]) => `
+      <label class="theme-row">
+        <span class="theme-var-name">${THEME_LABELS[k] || k}</span>
+        <input type="color" class="theme-color-input" data-key="${k}" value="${full[k]}">
+      </label>
+    `).join('')
+    grid.querySelectorAll('input[type=color]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        currentTheme[e.target.dataset.key] = e.target.value
+        applyTheme(currentTheme)
+        const code = encodeTheme(currentTheme)
+        if (code) localStorage.setItem('theme', code)
+        else localStorage.removeItem('theme')
+      })
     })
-  })
+  }
+
+  // Sync demo UI to current state
+  const toggle = document.getElementById('demoToggle')
+  if (toggle) {
+    toggle.checked = demoMode
+    const ctrl = document.getElementById('demoControls')
+    if (ctrl) ctrl.style.display = demoMode ? 'block' : 'none'
+    updateDemoChips()
+  }
 }
 
 function openTheme() {
-  buildThemePanel()
+  buildSettingsPanel()
   document.getElementById('themePanel').classList.add('open')
   document.getElementById('themeOverlay').classList.add('open')
 }
@@ -564,8 +581,77 @@ document.getElementById('themeReset').addEventListener('click', () => {
   currentTheme = {}
   applyTheme({})
   localStorage.removeItem('theme')
-  buildThemePanel()
+  buildSettingsPanel()
   updateHash()
+})
+
+// ── Demo mode ──────────────────────────────────────────────────
+function updateDemoBanner() {
+  const banner = document.getElementById('demoBanner')
+  const info   = document.getElementById('demoBannerInfo')
+  if (!banner) return
+  if (!demoMode) { banner.style.display = 'none'; return }
+  const dayLabel = ['MON','TUE','WED','THU','FRI'][demoDay - 1] || '?'
+  info.textContent = `${week.toUpperCase()} · ${dayLabel} · ${fmtMins(demoMins)}`
+  banner.style.display = 'flex'
+}
+
+function updateDemoChips() {
+  document.querySelectorAll('#demoWeekBtns .demo-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.week === week)
+  })
+  document.querySelectorAll('#demoDayBtns .demo-chip').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.day) === demoDay)
+  })
+  const h   = Math.floor(demoMins / 60)
+  const m   = demoMins % 60
+  const inp = document.getElementById('demoTime')
+  if (inp) inp.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// Demo toggle on/off
+document.getElementById('demoToggle').addEventListener('change', e => {
+  demoMode = e.target.checked
+  const ctrl = document.getElementById('demoControls')
+  if (ctrl) ctrl.style.display = demoMode ? 'block' : 'none'
+  if (!demoMode) {
+    const auto = calcWeek()
+    if (week !== auto) setWeek(auto)
+  }
+  updateDemoChips()
+  rebuild()
+  tick()
+  updateDemoBanner()
+})
+
+// Week chips
+document.getElementById('demoWeekBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.demo-chip[data-week]')
+  if (!btn) return
+  setWeek(btn.dataset.week)
+  updateDemoChips()
+  updateDemoBanner()
+})
+
+// Day chips
+document.getElementById('demoDayBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.demo-chip[data-day]')
+  if (!btn) return
+  demoDay = parseInt(btn.dataset.day)
+  updateDemoChips()
+  rebuild()
+  tick()
+  updateDemoBanner()
+})
+
+// Time input
+document.getElementById('demoTime').addEventListener('input', e => {
+  const [h, m] = e.target.value.split(':').map(Number)
+  if (!isNaN(h) && !isNaN(m)) {
+    demoMins = h * 60 + m
+    tick()
+    updateDemoBanner()
+  }
 })
 
 // ── Init ───────────────────────────────────────────────────────

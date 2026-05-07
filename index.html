@@ -23,7 +23,7 @@
       <span class="today-pill" id="todayPill"></span>
     </div>
     <div class="topbar-right">
-      <button class="clr-btn" id="btnTheme" title="Customise colours" aria-label="Open colour customiser">CLR</button>
+      <button class="clr-btn" id="btnTheme" title="Settings" aria-label="Open settings">SET</button>
       <div class="tog-group" role="group" aria-label="Week selector">
         <div class="tog-pill" id="pillWeek"></div>
         <button class="tog-btn" id="btnOdd" onclick="setWeek('odd')" aria-pressed="true">ODD</button>
@@ -45,6 +45,11 @@
     <span class="next-time" id="nextTime"></span>
   </div>
 
+  <div class="demo-banner" id="demoBanner" style="display:none">
+    <span class="demo-badge">⚡ DEMO</span>
+    <span class="demo-banner-info" id="demoBannerInfo"></span>
+  </div>
+
   <main class="table-wrap" id="tableWrap">
     <div class="time-line" id="tl" style="display:none"></div>
   </main>
@@ -55,10 +60,49 @@
   <div class="theme-panel" id="themePanel" aria-hidden="true">
     <div class="theme-inner">
       <div class="theme-hdr">
-        <span class="theme-title">CUSTOMIZE</span>
+        <span class="theme-title">SETTINGS</span>
         <button class="theme-close" id="themeClose">✕</button>
       </div>
-      <div class="theme-grid" id="themeGrid"></div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">COLOURS</div>
+        <div class="theme-grid" id="themeGrid"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">DEMO MODE</div>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Simulate time &amp; day</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="demoToggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+        <div class="demo-controls" id="demoControls" style="display:none">
+          <div class="demo-row">
+            <span class="demo-label">WEEK</span>
+            <div class="demo-chip-group" id="demoWeekBtns">
+              <button class="demo-chip" data-week="odd">ODD</button>
+              <button class="demo-chip" data-week="even">EVEN</button>
+            </div>
+          </div>
+          <div class="demo-row">
+            <span class="demo-label">DAY</span>
+            <div class="demo-chip-group" id="demoDayBtns">
+              <button class="demo-chip" data-day="1">MON</button>
+              <button class="demo-chip" data-day="2">TUE</button>
+              <button class="demo-chip" data-day="3">WED</button>
+              <button class="demo-chip" data-day="4">THU</button>
+              <button class="demo-chip" data-day="5">FRI</button>
+            </div>
+          </div>
+          <div class="demo-row">
+            <span class="demo-label">TIME</span>
+            <input type="time" id="demoTime" class="demo-time" value="11:45">
+          </div>
+        </div>
+      </div>
+
       <div class="theme-actions">
         <button class="theme-btn" id="themeCopyLink">COPY LINK</button>
         <button class="theme-btn" id="themeReset">RESET ALL</button>
