@@ -21,6 +21,7 @@
     <div class="topbar-left">
       <h1 class="title">S2-05<span class="cursor">█</span></h1>
       <span class="today-pill" id="todayPill"></span>
+      <span class="term-pill" id="termPill"></span>
     </div>
     <div class="topbar-right">
       <button class="clr-btn" id="btnTheme" title="Settings" aria-label="Open settings">SET</button>
@@ -43,6 +44,12 @@
     <span class="next-label">NEXT</span>
     <span class="next-subject" id="nextSubj"></span>
     <span class="next-time" id="nextTime"></span>
+  </div>
+
+  <div class="upcoming-bar" id="upcomingBar" style="display:none">
+    <span class="upcoming-label" id="upcomingLabel">NEXT</span>
+    <span class="upcoming-day" id="upcomingDay"></span>
+    <span class="upcoming-detail" id="upcomingDetail"></span>
   </div>
 
   <div class="demo-banner" id="demoBanner" style="display:none">
@@ -100,6 +107,33 @@
             <span class="demo-label">TIME</span>
             <input type="time" id="demoTime" class="demo-time" value="11:45">
           </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">VIEW</div>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Compact rows</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="compactToggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">NOTIFICATIONS</div>
+        <div class="notif-row">
+          <span class="demo-toggle-label">5 min before each class</span>
+          <button class="theme-btn notif-btn" id="notifClassBtn">ENABLE</button>
+        </div>
+        <div class="notif-row" style="margin-top:10px">
+          <span class="demo-toggle-label">Evening reminder</span>
+          <button class="theme-btn notif-btn" id="notifEveBtn">ENABLE</button>
+        </div>
+        <div class="notif-time-row" id="notifTimeRow" style="display:none">
+          <span class="demo-label">TIME</span>
+          <input type="time" id="notifTime" class="demo-time" value="19:30">
         </div>
       </div>
 

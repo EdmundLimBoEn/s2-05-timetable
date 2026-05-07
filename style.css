@@ -102,6 +102,18 @@ body {
   line-height: 1;
 }
 
+.term-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: rgba(255,59,59,0.55);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,59,59,0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
 /* ── Toggle ────────────────────────────────────────────────── */
 .tog-group {
   display: flex;
@@ -408,6 +420,42 @@ tr.today-row td .cell:not(.empty) {
   flex-shrink: 0;
   margin-left: auto;
 }
+
+/* ── Upcoming bar ───────────────────────────────────────────── */
+.upcoming-bar {
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+
+.upcoming-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 0.12em;
+  flex-shrink: 0;
+}
+
+.upcoming-day {
+  font-family: 'VT323', monospace;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+}
+
+.upcoming-detail {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.05em;
+  margin-left: auto;
+  text-align: right;
+}
+
+.upcoming-detail.has-sw { color: rgba(255,59,59,0.65); }
 
 /* ── Next bar ───────────────────────────────────────────────── */
 .next-bar {
@@ -734,3 +782,27 @@ tr.today-row td .cell:not(.empty) {
   filter: invert(0.6);
   cursor: pointer;
 }
+
+/* ── Compact mode ────────────────────────────────────────────── */
+body.compact td      { height: 40px; }
+body.compact .cell   { height: 34px; }
+body.compact .cell .subj { font-size: 0.95rem; }
+
+/* ── Notification settings ───────────────────────────────────── */
+.notif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.notif-time-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 4px;
+  margin-top: 4px;
+}
+
+.notif-btn { flex: 0 0 auto; min-width: 90px; }

@@ -39,6 +39,13 @@ const ABBREV = {
 // First Monday of Term 1 2026 (Week 1). Odd/even alternates continuously across all terms.
 const TERM_START = { date: '2026-01-05', week: 'even' }
 
+const TERMS_2026 = [
+  { term: 1, start: '2026-01-05' },
+  { term: 2, start: '2026-03-23' },
+  { term: 3, start: '2026-06-29' },
+  { term: 4, start: '2026-09-14' },
+]
+
 // CSS variable keys → default hex colours
 const THEME_VARS = {
   bg:       '#080808',
@@ -190,6 +197,13 @@ let currentTheme = {}
 let demoMode     = false
 let demoDay      = 3    // Wednesday
 let demoMins     = 705  // 11:45
+let compact      = !!localStorage.getItem('compact')
+
+let classNotifEnabled  = false
+let classNotifTimeouts = []
+let eveNotifEnabled    = false
+let eveNotifMins       = 19 * 60 + 30
+let eveNotifTimeout    = null
 
 // ── DOM refs ───────────────────────────────────────────────────
 const wrap = document.getElementById('tableWrap')
@@ -258,6 +272,35 @@ function calcWeek() {
   const weeksDiff = Math.floor((Date.now() - new Date(TERM_START.date)) / msPerWeek)
   const startIsOdd = TERM_START.week === 'odd'
   return (weeksDiff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+}
+
+function calcTermWeek() {
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+  for (let i = TERMS_2026.length - 1; i >= 0; i--) {
+    const start = new Date(TERMS_2026[i].start).getTime()
+    if (now >= start) {
+      const w = Math.floor((now - start) / msPerWeek) + 1
+      return w <= 10 ? { term: TERMS_2026[i].term, week: w } : null
+    }
+  }
+  return null
+}
+
+function weekForDate(d) {
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const diff = Math.floor((d.getTime() - new Date(TERM_START.date).getTime()) / msPerWeek)
+  const startIsOdd = TERM_START.week === 'odd'
+  return (diff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+}
+
+function firstRealBlock(schedule) {
+  let min = ALL_MINS[0]
+  for (const b of schedule) {
+    if (b.style !== 'empty' && b.style !== 'brk') return { block: b, startMin: min }
+    min += b.span * 20
+  }
+  return null
 }
 
 // ── URL hash sync ──────────────────────────────────────────────
@@ -358,6 +401,7 @@ function setWeek(w) {
   showActive()
   tick()
   updateHash()
+  scheduleClassNotifs()
 }
 
 window.setWeek = setWeek
@@ -401,12 +445,54 @@ function tick() {
 
   document.querySelectorAll('.cell.now').forEach(c => c.classList.remove('now'))
 
+  const upcomingBar = document.getElementById('upcomingBar')
+
   if (!weekday || !inHours) {
     tl.style.display     = 'none'
     nowBar.style.display = 'none'
     if (nextBar) nextBar.style.display = 'none'
+
+    if (upcomingBar) {
+      const dow = getEffectiveDow()
+      const isBeforeSchool = dow >= 1 && dow <= 5 && nm < ALL_MINS[0]
+
+      if (isBeforeSchool) {
+        const sched  = TIMETABLE[week][dow - 1]
+        const first  = firstRealBlock(sched)
+        const minsTo = first ? first.startMin - nm : null
+        const hasSW  = sched.some(b => b.style === 'sw')
+        const detail = document.getElementById('upcomingDetail')
+        document.getElementById('upcomingLabel').textContent = 'TODAY'
+        document.getElementById('upcomingDay').textContent   = DAY_LABELS[dow - 1].toUpperCase() + ' · ' + week.toUpperCase()
+        detail.textContent = first
+          ? first.block.label + ' · ' + fmtMins(first.startMin) + ' · in ' + minsTo + ' MIN' + (hasSW ? ' · ⚡ S&W' : '')
+          : ''
+        detail.classList.toggle('has-sw', hasSW)
+      } else {
+        const d = new Date()
+        for (let i = 1; i <= 7; i++) {
+          d.setDate(d.getDate() + 1)
+          if (d.getDay() >= 1 && d.getDay() <= 5) break
+        }
+        const nextDow = d.getDay()
+        const nextWk  = weekForDate(d)
+        const sched   = TIMETABLE[nextWk][nextDow - 1]
+        const hasSW   = sched.some(b => b.style === 'sw')
+        const subjList = [...new Set(
+          sched.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => ABBREV[b.style])
+        )]
+        const detail  = document.getElementById('upcomingDetail')
+        document.getElementById('upcomingLabel').textContent = 'NEXT'
+        document.getElementById('upcomingDay').textContent   = DAY_LABELS[nextDow - 1].toUpperCase() + ' · ' + nextWk.toUpperCase()
+        detail.textContent = subjList.join(' · ') + (hasSW ? ' · ⚡ S&W' : '')
+        detail.classList.toggle('has-sw', hasSW)
+      }
+      upcomingBar.style.display = 'flex'
+    }
     return
   }
+
+  if (upcomingBar) upcomingBar.style.display = 'none'
 
   // Find current slot index
   let nowP = -1
@@ -542,6 +628,9 @@ function buildSettingsPanel() {
     if (ctrl) ctrl.style.display = demoMode ? 'block' : 'none'
     updateDemoChips()
   }
+
+  applyCompact()
+  updateNotifBtns()
 }
 
 function openTheme() {
@@ -654,10 +743,162 @@ document.getElementById('demoTime').addEventListener('input', e => {
   }
 })
 
+// ── Compact mode ───────────────────────────────────────────────
+function applyCompact() {
+  document.body.classList.toggle('compact', compact)
+  const t = document.getElementById('compactToggle')
+  if (t) t.checked = compact
+}
+
+document.getElementById('compactToggle')?.addEventListener('change', e => {
+  compact = e.target.checked
+  if (compact) localStorage.setItem('compact', '1')
+  else localStorage.removeItem('compact')
+  applyCompact()
+})
+
+// ── Notifications ──────────────────────────────────────────────
+function clearClassNotifs() {
+  classNotifTimeouts.forEach(clearTimeout)
+  classNotifTimeouts = []
+}
+
+function scheduleClassNotifs() {
+  clearClassNotifs()
+  if (!classNotifEnabled || !('Notification' in window) || Notification.permission !== 'granted') return
+  if (demoMode) return
+  const dow = todayDow
+  if (dow < 1 || dow > 5) return
+  const nm    = nowMins()
+  const sched = TIMETABLE[week][dow - 1]
+  let min = ALL_MINS[0]
+  for (const b of sched) {
+    if (b.style !== 'empty' && b.style !== 'brk') {
+      const target = min - 5
+      if (target > nm) {
+        const delay    = (target - nm) * 60_000
+        const label    = b.label
+        const startStr = fmtMins(min)
+        classNotifTimeouts.push(setTimeout(() => {
+          new Notification(`${label} in 5 min`, {
+            body: `S2-05 · starts at ${startStr}`,
+            icon: './icon.svg',
+            tag:  `class-${min}`
+          })
+        }, delay))
+      }
+    }
+    min += b.span * 20
+  }
+}
+
+function clearEveNotif() {
+  if (eveNotifTimeout) { clearTimeout(eveNotifTimeout); eveNotifTimeout = null }
+}
+
+function scheduleEveNotif() {
+  clearEveNotif()
+  if (!eveNotifEnabled || !('Notification' in window) || Notification.permission !== 'granted') return
+  const nm    = nowMins()
+  const delay = eveNotifMins > nm
+    ? (eveNotifMins - nm) * 60_000
+    : (24 * 60 - nm + eveNotifMins) * 60_000
+  eveNotifTimeout = setTimeout(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    while (tomorrow.getDay() === 0 || tomorrow.getDay() === 6) tomorrow.setDate(tomorrow.getDate() + 1)
+    const nextDow = tomorrow.getDay()
+    const nextWk  = weekForDate(tomorrow)
+    const sched   = TIMETABLE[nextWk][nextDow - 1]
+    const subjects = [...new Set(sched.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => b.label))]
+    const hasSW   = sched.some(b => b.style === 'sw')
+    const body    = subjects.join(' · ') + (hasSW ? '\n⚡ S&W — bring PE kit!' : '')
+    new Notification(`Tomorrow: ${DAY_LABELS[nextDow - 1].toUpperCase()} · ${nextWk.toUpperCase()}`, {
+      body, icon: './icon.svg', tag: 'eve-reminder'
+    })
+    scheduleEveNotif()
+  }, delay)
+}
+
+function updateNotifBtns() {
+  const classBtn  = document.getElementById('notifClassBtn')
+  const eveBtn    = document.getElementById('notifEveBtn')
+  const timeRow   = document.getElementById('notifTimeRow')
+  const timeInp   = document.getElementById('notifTime')
+  const supported = 'Notification' in window
+  const denied    = supported && Notification.permission === 'denied'
+
+  if (classBtn) {
+    classBtn.disabled    = !supported || denied
+    classBtn.textContent = !supported ? 'N/A' : denied ? 'BLOCKED' : classNotifEnabled ? 'DISABLE' : 'ENABLE'
+    classBtn.classList.toggle('confirm', classNotifEnabled)
+  }
+  if (eveBtn) {
+    eveBtn.disabled    = !supported || denied
+    eveBtn.textContent = !supported ? 'N/A' : denied ? 'BLOCKED' : eveNotifEnabled ? 'DISABLE' : 'ENABLE'
+    eveBtn.classList.toggle('confirm', eveNotifEnabled)
+  }
+  if (timeRow) timeRow.style.display = eveNotifEnabled ? 'flex' : 'none'
+  if (timeInp) {
+    const h = Math.floor(eveNotifMins / 60)
+    const m = eveNotifMins % 60
+    timeInp.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+}
+
+document.getElementById('notifClassBtn')?.addEventListener('click', async () => {
+  if (!('Notification' in window)) return
+  if (classNotifEnabled) {
+    classNotifEnabled = false
+    localStorage.removeItem('classNotif')
+    clearClassNotifs()
+  } else {
+    const perm = await Notification.requestPermission()
+    classNotifEnabled = perm === 'granted'
+    if (classNotifEnabled) { localStorage.setItem('classNotif', '1'); scheduleClassNotifs() }
+  }
+  updateNotifBtns()
+})
+
+document.getElementById('notifEveBtn')?.addEventListener('click', async () => {
+  if (!('Notification' in window)) return
+  if (eveNotifEnabled) {
+    eveNotifEnabled = false
+    localStorage.removeItem('eveNotif')
+    clearEveNotif()
+  } else {
+    const perm = await Notification.requestPermission()
+    eveNotifEnabled = perm === 'granted'
+    if (eveNotifEnabled) { localStorage.setItem('eveNotif', '1'); scheduleEveNotif() }
+  }
+  updateNotifBtns()
+})
+
+document.getElementById('notifTime')?.addEventListener('input', e => {
+  const [h, m] = e.target.value.split(':').map(Number)
+  if (!isNaN(h) && !isNaN(m)) {
+    eveNotifMins = h * 60 + m
+    localStorage.setItem('eveNotifTime', String(eveNotifMins))
+    if (eveNotifEnabled) scheduleEveNotif()
+  }
+})
+
 // ── Init ───────────────────────────────────────────────────────
 setTimeout(() => {
   loadFromHash()
   applyTheme(currentTheme)
+  applyCompact()
+
+  const tw = calcTermWeek()
+  const termPillEl = document.getElementById('termPill')
+  if (termPillEl) termPillEl.textContent = tw ? `T${tw.term} W${tw.week}` : ''
+
+  classNotifEnabled = !!localStorage.getItem('classNotif') && 'Notification' in window && Notification.permission === 'granted'
+  eveNotifEnabled   = !!localStorage.getItem('eveNotif')   && 'Notification' in window && Notification.permission === 'granted'
+  const storedEve   = parseInt(localStorage.getItem('eveNotifTime') || '')
+  if (!isNaN(storedEve)) eveNotifMins = storedEve
+  if (classNotifEnabled) scheduleClassNotifs()
+  if (eveNotifEnabled)   scheduleEveNotif()
 
   const activeBtn   = document.getElementById(week === 'odd' ? 'btnOdd' : 'btnEven')
   const inactiveBtn = document.getElementById(week === 'odd' ? 'btnEven' : 'btnOdd')
