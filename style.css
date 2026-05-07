@@ -230,8 +230,8 @@ body {
 /* ── Cells ──────────────────────────────────────────────────── */
 td {
   padding: 3px;
-  height: max(64px, calc((100svh - 230px) / 5));
-  vertical-align: top;
+  height: 64px;
+  vertical-align: stretch;
 }
 
 .td-day {
@@ -255,8 +255,7 @@ tr.today-row .td-day {
 }
 
 .cell {
-  height: 100%;
-  min-height: 54px;
+  height: 58px;
   border-radius: 5px;
   display: flex;
   align-items: center;
