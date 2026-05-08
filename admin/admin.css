@@ -406,5 +406,91 @@ html, body {
   margin-bottom: 20px;
 }
 
+/* ── Announcements ───────────────────────────────────────────── */
+.annc-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.annc-form-row { display: flex; gap: 8px; }
+
+.annc-cat-select {
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  padding: 5px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.annc-cat-select:focus { outline: 1px solid rgba(255,59,59,0.35); border-color: rgba(255,59,59,0.25); }
+
+.annc-body-input {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #fff;
+  letter-spacing: 0.03em;
+  resize: vertical;
+  min-height: 60px;
+}
+.annc-body-input:focus { outline: 1px solid rgba(255,59,59,0.35); border-color: rgba(255,59,59,0.25); }
+
+.annc-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.annc-card-body { flex: 1; min-width: 0; }
+.annc-card-title {
+  font-family: 'VT323', monospace;
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.annc-card-meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.annc-card-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--fg);
+  letter-spacing: 0.03em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.annc-cat-pill {
+  display: inline-block;
+  font-family: 'VT323', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.annc-cat-pill.general  { background: rgba(255,255,255,0.08); color: var(--fg-dim); }
+.annc-cat-pill.homework { background: rgba(255,59,59,0.15);   color: var(--red); }
+.annc-cat-pill.exam     { background: rgba(255,183,0,0.15);   color: #ffb700; }
+.annc-cat-pill.event    { background: rgba(79,195,247,0.15);  color: #4fc3f7; }
+
+.anncs-empty {
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.08em;
+  padding: 12px 0 8px;
+}
+
 /* ── Hidden util ─────────────────────────────────────────────── */
 .hidden { display: none !important; }

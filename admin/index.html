@@ -39,6 +39,7 @@
     <nav class="admin-tabs">
       <button class="admin-tab active" data-tab="timetable">TIMETABLE</button>
       <button class="admin-tab"        data-tab="exams">EXAMS</button>
+      <button class="admin-tab"        data-tab="announcements">ANNCS</button>
     </nav>
 
     <!-- Timetable tab -->
@@ -67,6 +68,36 @@
       <div class="save-bar">
         <button class="btn primary" id="saveExamsBtn">SAVE EXAMS</button>
         <span class="save-status" id="saveExamsStatus"></span>
+      </div>
+    </div>
+  </div>
+
+    <!-- Announcements tab -->
+    <div class="admin-content hidden" id="tabAnnouncements">
+      <div style="height:16px"></div>
+      <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:16px">
+        ANNOUNCEMENTS · posted to all users on the public site within 10 seconds
+      </p>
+
+      <div class="annc-form">
+        <div class="annc-form-row">
+          <input class="exam-label-input" id="anncTitle" type="text" placeholder="Title (required)" maxlength="100">
+          <select class="annc-cat-select" id="anncCategory">
+            <option value="general">GENERAL</option>
+            <option value="homework">HOMEWORK</option>
+            <option value="exam">EXAM</option>
+            <option value="event">EVENT</option>
+          </select>
+        </div>
+        <textarea class="annc-body-input" id="anncBody" placeholder="Body (optional)" maxlength="5000" rows="3"></textarea>
+        <button class="btn small" id="addAnncBtn">+ POST ANNOUNCEMENT</button>
+      </div>
+
+      <div id="anncsList" style="margin-top:16px"></div>
+
+      <div class="save-bar">
+        <button class="btn primary" id="saveAnncsBtn">SAVE ANNOUNCEMENTS</button>
+        <span class="save-status" id="saveAnncsStatus"></span>
       </div>
     </div>
   </div>

@@ -30,7 +30,7 @@ const SUBJECT_KEYS = Object.keys(SUBJECT_DISPLAY)
 
 // ── State ─────────────────────────────────────────────────────
 let activeWeek = 'odd'
-let editingData = { timetable: { odd: [], even: [] }, exams: [] }
+let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [] }
 let serverData  = null   // last confirmed saved state
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -55,6 +55,7 @@ async function init() {
   show('dashboard')
   renderTimetable()
   renderExams()
+  renderAnnouncements()
 }
 
 // ── Fetch helper ──────────────────────────────────────────────
@@ -270,7 +271,8 @@ async function saveTimetable() {
       [activeWeek]: editingData.timetable[activeWeek],
       [otherWeek]:  serverData?.timetable?.[otherWeek] ?? editingData.timetable[otherWeek]
     },
-    exams: serverData?.exams ?? editingData.exams
+    exams:         serverData?.exams          ?? editingData.exams,
+    announcements: serverData?.announcements  ?? editingData.announcements
   }
 
   try {
@@ -302,8 +304,9 @@ async function saveExams() {
   status.className = 'save-status'
 
   const payload = {
-    timetable: serverData?.timetable ?? editingData.timetable,
-    exams:     editingData.exams
+    timetable:     serverData?.timetable     ?? editingData.timetable,
+    exams:         editingData.exams,
+    announcements: serverData?.announcements ?? editingData.announcements
   }
 
   try {
@@ -316,6 +319,99 @@ async function saveExams() {
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Exams saved ✓', 'success')
+  } catch (err) {
+    status.textContent = err.message
+    status.className = 'save-status err'
+    showToast('Save failed: ' + err.message, 'error')
+  } finally {
+    btn.disabled = false
+  }
+}
+
+// ── Announcements renderer ────────────────────────────────────
+function renderAnnouncements() {
+  const list = document.getElementById('anncsList')
+  if (!list) return
+  const anncs = editingData.announcements || []
+  list.innerHTML = ''
+
+  if (!anncs.length) {
+    const empty = document.createElement('p')
+    empty.className = 'anncs-empty'
+    empty.textContent = 'No announcements yet. Use the form above to post one.'
+    list.appendChild(empty)
+    return
+  }
+
+  // newest first
+  const sorted = [...anncs].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  sorted.forEach(annc => {
+    const idx = editingData.announcements.indexOf(annc)
+    const card = document.createElement('div')
+    card.className = 'annc-card'
+
+    const body = document.createElement('div')
+    body.className = 'annc-card-body'
+
+    const title = document.createElement('div')
+    title.className = 'annc-card-title'
+    title.textContent = annc.title
+
+    const meta = document.createElement('div')
+    meta.className = 'annc-card-meta'
+    const catPill = `<span class="annc-cat-pill ${annc.category}">${annc.category.toUpperCase()}</span>`
+    const date = annc.createdAt ? new Date(annc.createdAt).toLocaleString('en-SG') : 'new'
+    meta.innerHTML = `${catPill}${date}${annc.createdBy ? ' · ' + annc.createdBy : ''}`
+
+    body.appendChild(title)
+    body.appendChild(meta)
+
+    if (annc.body) {
+      const text = document.createElement('div')
+      text.className = 'annc-card-text'
+      text.textContent = annc.body
+      body.appendChild(text)
+    }
+
+    const delBtn = document.createElement('button')
+    delBtn.className = 'btn danger small'
+    delBtn.textContent = '✕'
+    delBtn.title = 'Delete announcement'
+    delBtn.addEventListener('click', () => {
+      editingData.announcements.splice(idx, 1)
+      renderAnnouncements()
+    })
+
+    card.appendChild(body)
+    card.appendChild(delBtn)
+    list.appendChild(card)
+  })
+}
+
+async function saveAnnouncements() {
+  const btn    = document.getElementById('saveAnncsBtn')
+  const status = document.getElementById('saveAnncsStatus')
+
+  btn.disabled = true
+  status.textContent = 'Saving...'
+  status.className = 'save-status'
+
+  const payload = {
+    timetable:     serverData?.timetable ?? editingData.timetable,
+    exams:         serverData?.exams     ?? editingData.exams,
+    announcements: editingData.announcements
+  }
+
+  try {
+    const result = await apiFetch('/api/save', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    serverData = { ...serverData, announcements: editingData.announcements }
+    renderLastSaved(result)
+    status.textContent = 'Saved!'
+    status.className = 'save-status ok'
+    showToast('Announcements saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
@@ -350,6 +446,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     show('dashboard')
     renderTimetable()
     renderExams()
+    renderAnnouncements()
   } catch (e) {
     err.textContent = e.message
     btn.disabled = false
@@ -371,6 +468,7 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     const name = tab.dataset.tab
     document.getElementById('tabTimetable').classList.toggle('hidden', name !== 'timetable')
     document.getElementById('tabExams').classList.toggle('hidden', name !== 'exams')
+    document.getElementById('tabAnnouncements').classList.toggle('hidden', name !== 'announcements')
   })
 })
 
@@ -390,6 +488,17 @@ document.getElementById('saveExamsBtn').addEventListener('click', saveExams)
 document.getElementById('addExamBtn').addEventListener('click', () => {
   editingData.exams.push({ label: '', date: '' })
   renderExams()
+})
+document.getElementById('saveAnncsBtn').addEventListener('click', saveAnnouncements)
+document.getElementById('addAnncBtn').addEventListener('click', () => {
+  const title = document.getElementById('anncTitle').value.trim()
+  if (!title) { showToast('Title is required', 'error'); return }
+  const body     = document.getElementById('anncBody').value.trim()
+  const category = document.getElementById('anncCategory').value
+  editingData.announcements.push({ title, body, category })
+  document.getElementById('anncTitle').value = ''
+  document.getElementById('anncBody').value  = ''
+  renderAnnouncements()
 })
 
 // ── Helpers ───────────────────────────────────────────────────

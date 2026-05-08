@@ -1108,6 +1108,177 @@ tr.day-absent td .cell:not(.empty) {
 }
 .hw-add-btn:hover { background: rgba(255,255,255,0.12); }
 
+/* ── Announcement toast ──────────────────────────────────────── */
+.annc-toast {
+  position: fixed;
+  top: 16px; right: 16px;
+  z-index: 2000;
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  min-width: 220px; max-width: 320px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.annc-toast.visible { opacity: 1; transform: none; pointer-events: auto; }
+.annc-toast-stripe { width: 4px; background: var(--red); flex-shrink: 0; }
+.annc-toast-body {
+  flex: 1;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.annc-toast-cat {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  opacity: 0.5;
+}
+.annc-toast-cat.homework { color: #ff6b6b; opacity: 1; }
+.annc-toast-cat.exam     { color: #ffb74d; opacity: 1; }
+.annc-toast-cat.event    { color: #4fc3f7; opacity: 1; }
+.annc-toast-title {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--fg);
+}
+.annc-toast-close {
+  background: none; border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.85rem;
+  padding: 0 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+}
+.annc-toast-close:hover { color: var(--fg); }
+
+/* ── Bottom panel ─────────────────────────────────────────────── */
+.bottom-panel {
+  width: 100%;
+  padding: 0 0 env(safe-area-inset-bottom);
+  box-sizing: border-box;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.bottom-panel.split-mode { display: flex; flex-direction: row; min-height: 220px; }
+.bottom-panel.single-mode { display: flex; flex-direction: column; }
+
+.bottom-pane-toggle {
+  align-self: center;
+  margin: 10px auto 0;
+}
+
+.bottom-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.bottom-panel.split-mode .bottom-pane + .bottom-pane {
+  border-left: 1px solid rgba(255,255,255,0.06);
+}
+.bottom-panel.single-mode .bottom-pane.hidden { display: none; }
+
+.bottom-pane-hd {
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 8px;
+}
+
+.journal-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 140px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.bottom-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+
+/* ── Public announcements cards ──────────────────────────────── */
+.anncs-list { display: flex; flex-direction: column; gap: 8px; }
+.anncs-empty {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.2);
+}
+.anncs-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.anncs-card-hd { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.anncs-cat-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  flex-shrink: 0;
+}
+.anncs-cat-pill.homework { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+.anncs-cat-pill.exam     { background: rgba(255,183,77,0.15);  color: #ffb74d; }
+.anncs-cat-pill.event    { background: rgba(79,195,247,0.15);  color: #4fc3f7; }
+.anncs-card-title {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: var(--fg);
+  flex: 1;
+}
+.anncs-card-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.anncs-card-meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.05em;
+}
+
+/* ── Layout settings toggle ──────────────────────────────────── */
+.layout-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.layout-tog { flex-shrink: 0; }
+
 /* ── B17: Reduced motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .scanlines { display: none; }

@@ -36,6 +36,15 @@
     </div>
   </header>
 
+  <div class="annc-toast" id="anncToast" style="display:none">
+    <div class="annc-toast-stripe"></div>
+    <div class="annc-toast-body">
+      <span class="annc-toast-cat" id="anncToastCat"></span>
+      <span class="annc-toast-title" id="anncToastTitle"></span>
+    </div>
+    <button class="annc-toast-close" id="anncToastClose">&#x2715;</button>
+  </div>
+
   <div class="sw-update-bar" id="swUpdateBar" style="display:none">
     <span>UPDATE AVAILABLE</span>
     <button class="sw-refresh-btn" onclick="location.reload()">&#8635; REFRESH</button>
@@ -79,6 +88,23 @@
   <main class="table-wrap" id="tableWrap">
     <div class="time-line" id="tl" style="display:none"></div>
   </main>
+
+  <section class="bottom-panel" id="bottomPanel">
+    <div class="bottom-pane-toggle tog-group" id="bottomPaneToggle" style="display:none">
+      <div class="tog-pill" id="pillBottomPane"></div>
+      <button class="tog-btn" id="btnPaneJournal" onclick="setBottomPane('journal')" aria-pressed="true">JOURNAL</button>
+      <button class="tog-btn" id="btnPaneAnncs" onclick="setBottomPane('anncs')" aria-pressed="false">ANNCS</button>
+    </div>
+    <div class="bottom-pane" id="journalPane">
+      <div class="bottom-pane-hd">JOURNAL</div>
+      <textarea id="journalText" class="journal-textarea" placeholder="Notes, todos, thoughts…" maxlength="50000"></textarea>
+      <span class="bottom-hint">Saved on this device</span>
+    </div>
+    <div class="bottom-pane" id="anncsPane">
+      <div class="bottom-pane-hd">ANNOUNCEMENTS</div>
+      <div id="anncsList" class="anncs-list"></div>
+    </div>
+  </section>
 
   <footer class="bottom">S2-05 · TERM 2 2026</footer>
 
@@ -162,8 +188,15 @@
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-hd">HOMEWORK</div>
-        <div class="hw-section" id="hwSection"></div>
+        <div class="settings-section-hd">BOTTOM PANEL</div>
+        <div class="layout-toggle-row">
+          <span class="demo-toggle-label">Layout</span>
+          <div class="tog-group layout-tog" role="group" aria-label="Bottom panel layout">
+            <div class="tog-pill" id="pillLayout"></div>
+            <button class="tog-btn" id="btnLayoutSplit" onclick="setBottomLayout('split')" aria-pressed="true">SPLIT</button>
+            <button class="tog-btn" id="btnLayoutSingle" onclick="setBottomLayout('single')" aria-pressed="false">SINGLE</button>
+          </div>
+        </div>
       </div>
 
       <div class="theme-actions">
