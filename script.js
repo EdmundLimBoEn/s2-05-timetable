@@ -1317,22 +1317,25 @@ setTimeout(async () => {
   rebuild()
   checkExams()
 
-  // Fetch live data; re-render only when updatedAt changes
+  // Fetch live data; re-render timetable/exams only when updatedAt changes,
+  // but always sync announcements so they appear even on first load.
   let lastUpdatedAt = null
   async function refreshData() {
     try {
       const res = await fetch('/api/data', { cache: 'no-store' })
       if (!res.ok) return
       const remote = await res.json()
-      if (remote.updatedAt === lastUpdatedAt) return   // nothing changed
+
+      // Announcements: always sync regardless of updatedAt
+      const remoteAnncs = Array.isArray(remote.announcements) ? remote.announcements : []
+      checkNewAnncs(remoteAnncs)
+      ANNCS = remoteAnncs
+      renderAnncs()
+
+      if (remote.updatedAt === lastUpdatedAt) return   // timetable/exams unchanged
       lastUpdatedAt = remote.updatedAt
       if (remote.timetable) TIMETABLE = remote.timetable
       if (Array.isArray(remote.exams)) EXAMS = remote.exams
-      if (Array.isArray(remote.announcements)) {
-        checkNewAnncs(remote.announcements)
-        ANNCS = remote.announcements
-        renderAnncs()
-      }
       rebuild()
       checkExams()
     } catch {
