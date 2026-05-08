@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>S2-05 · Term 2 2026</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,8 +23,10 @@
       <h1 class="title">S2-05<span class="cursor">█</span></h1>
       <span class="today-pill" id="todayPill"></span>
       <span class="term-pill" id="termPill"></span>
+      <span class="break-pill" id="breakPill" style="display:none"></span>
     </div>
     <div class="topbar-right">
+      <span class="offline-badge" id="offlineBadge" style="display:none">OFFLINE</span>
       <button class="clr-btn" id="btnTheme" title="Settings" aria-label="Open settings">SET</button>
       <div class="tog-group" role="group" aria-label="Week selector">
         <div class="tog-pill" id="pillWeek"></div>
@@ -33,11 +36,17 @@
     </div>
   </header>
 
+  <div class="sw-update-bar" id="swUpdateBar" style="display:none">
+    <span>UPDATE AVAILABLE</span>
+    <button class="sw-refresh-btn" onclick="location.reload()">&#8635; REFRESH</button>
+  </div>
+
   <div class="now-bar" id="nowBar" style="display:none">
     <span class="now-dot"></span>
     <span class="now-label">NOW</span>
     <span class="now-subject" id="nowSubj"></span>
     <span class="now-countdown" id="nowCountdown"></span>
+    <span class="now-ends" id="nowEnds"></span>
   </div>
 
   <div class="next-bar" id="nextBar" style="display:none">
@@ -50,6 +59,16 @@
     <span class="upcoming-label" id="upcomingLabel">NEXT</span>
     <span class="upcoming-day" id="upcomingDay"></span>
     <span class="upcoming-detail" id="upcomingDetail"></span>
+  </div>
+
+  <div class="exam-bar" id="examBar" style="display:none">
+    <span class="exam-icon">&#x23F3;</span>
+    <span class="exam-text" id="examText"></span>
+  </div>
+
+  <div class="bring-bar" id="bringBar" style="display:none">
+    <span class="bring-label">TODAY</span>
+    <span class="bring-subjects" id="bringSubjects"></span>
   </div>
 
   <div class="demo-banner" id="demoBanner" style="display:none">
@@ -122,6 +141,11 @@
       </div>
 
       <div class="settings-section">
+        <div class="settings-section-hd">THIS WEEK</div>
+        <div class="stats-grid" id="statsGrid"></div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-section-hd">NOTIFICATIONS</div>
         <div class="notif-row">
           <span class="demo-toggle-label">5 min before each class</span>
@@ -137,16 +161,47 @@
         </div>
       </div>
 
+      <div class="settings-section">
+        <div class="settings-section-hd">HOMEWORK</div>
+        <div class="hw-section" id="hwSection"></div>
+      </div>
+
       <div class="theme-actions">
+        <button class="theme-btn" id="installBtn" style="display:none">INSTALL APP</button>
+        <button class="theme-btn" id="printBtn">PRINT</button>
         <button class="theme-btn" id="themeCopyLink">COPY LINK</button>
         <button class="theme-btn" id="themeReset">RESET ALL</button>
       </div>
     </div>
   </div>
 
+  <div class="note-overlay" id="noteOverlay" style="display:none"></div>
+  <div class="note-modal" id="noteModal" style="display:none">
+    <div class="note-modal-hd">
+      <span class="note-modal-title" id="noteModalTitle">NOTE</span>
+      <button class="theme-close" id="noteModalClose">&#x2715;</button>
+    </div>
+    <input type="text" id="noteInput" class="note-input" placeholder="e.g. bring calculator" maxlength="80" autocomplete="off">
+    <div class="note-actions">
+      <button class="theme-btn" id="noteSave">SAVE</button>
+      <button class="theme-btn" id="noteClear">CLEAR</button>
+    </div>
+  </div>
+
   <script src="script.js"></script>
   <script>
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const w = reg.installing
+          w.addEventListener('statechange', () => {
+            if (w.state === 'installed' && navigator.serviceWorker.controller) {
+              document.getElementById('swUpdateBar').style.display = 'flex'
+            }
+          })
+        })
+      })
+    }
   </script>
 </body>
 </html>
