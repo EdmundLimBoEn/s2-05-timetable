@@ -81,8 +81,45 @@ node scripts/hash-password.js <password>
 The admin panel (`/admin`) lets authorised users:
 
 - Edit the odd/even week timetable
+- Toggle school day display between 3 PM and 5 PM
 - Manage upcoming exam dates
 - Post and delete class announcements
 - Add schedule overrides (holidays, custom days)
 
 Changes are live on the public site within 10 seconds.
+
+---
+
+## Fork this for your class
+
+You can run your own instance of this app for any class with a repeating odd/even week schedule.
+
+### 1. Fork & deploy
+
+1. Fork this repo on GitHub
+2. Create a new Vercel project and connect the fork
+3. Add a Vercel Blob store to the project (Storage tab → Create)
+4. Set the environment variables below
+5. Push to `main` — Vercel auto-deploys
+
+### 2. Environment variables
+
+| Variable | How to get it |
+|----------|--------------|
+| `BLOB_READ_WRITE_TOKEN` | Auto-set after adding Vercel Blob |
+| `JWT_SECRET` | Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `ADMINS_JSON` | Run `node scripts/hash-password.js yourpassword`, then format as `[{"username":"you","passwordHash":"<hash>"}]` |
+
+### 3. Configure your timetable
+
+Use the **[AGENT_SETUP.md](./AGENT_SETUP.md)** file — fill in your class details and hand it to Claude (or any AI coding assistant) to update the code and seed data automatically.
+
+Or do it manually:
+- Edit `TIMETABLE` in `script.js` (odd/even week, Mon–Fri blocks)
+- Update `TERM_START` and `TERMS_2026` for your school's calendar
+- Update `ABBREV` and subject colours in `style.css` to match your subjects
+- Edit `EXAMS` in `api/_lib/seed.js` for your exam schedule
+
+### 4. Custom domain (optional)
+
+Point an A record at `76.76.21.21` in your DNS, then add the domain in Vercel project settings.
