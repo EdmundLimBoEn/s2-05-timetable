@@ -1302,6 +1302,7 @@ setTimeout(async () => {
   updateOnlineStatus()
   initJournal()
   renderAnncs()
+  setBottomLayout(bottomLayout)
 }, 50)
 
 // ── B3: Touch swipe to switch week ────────────────────────────
