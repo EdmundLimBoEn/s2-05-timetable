@@ -1206,10 +1206,10 @@ tr.day-absent td .cell:not(.empty) {
 .bottom-panes {
   flex: 1;
   display: flex;
+  flex-direction: row;
   overflow: hidden;
 }
 
-.bottom-panel.split-mode .bottom-panes { flex-direction: row; }
 .bottom-panel.single-mode .bottom-panes { flex-direction: column; }
 
 .bottom-pane {

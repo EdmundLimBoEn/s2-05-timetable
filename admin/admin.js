@@ -47,6 +47,7 @@ async function init() {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
+    editingData.announcements = editingData.announcements ?? []
     renderLastSaved(data)
   } catch {
     showToast('Could not load timetable data.', 'error')
@@ -441,6 +442,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
+    editingData.announcements = editingData.announcements ?? []
     renderLastSaved(data)
     hide('loginSection')
     show('dashboard')
