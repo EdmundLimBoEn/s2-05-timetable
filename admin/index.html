@@ -54,9 +54,18 @@
     <!-- Timetable tab -->
     <div class="admin-content" id="tabTimetable">
       <div style="height:16px"></div>
-      <div class="week-toggle">
-        <button class="week-btn active" data-week="odd">ODD WEEK</button>
-        <button class="week-btn"        data-week="even">EVEN WEEK</button>
+      <div class="tt-controls">
+        <div class="week-toggle">
+          <button class="week-btn active" data-week="odd">ODD WEEK</button>
+          <button class="week-btn"        data-week="even">EVEN WEEK</button>
+        </div>
+        <div class="hours-toggle">
+          <span class="hours-label">SCHOOL DAY ENDS</span>
+          <div class="week-toggle">
+            <button class="week-btn active" id="hoursShort">3 PM</button>
+            <button class="week-btn"        id="hoursExtended">5 PM</button>
+          </div>
+        </div>
       </div>
       <div class="last-saved" id="lastSaved"></div>
       <div id="dayCards"></div>

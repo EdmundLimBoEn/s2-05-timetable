@@ -30,7 +30,7 @@ const SUBJECT_KEYS = Object.keys(SUBJECT_DISPLAY)
 
 // ── State ─────────────────────────────────────────────────────
 let activeWeek = 'odd'
-let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [], overrides: [] }
+let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [], overrides: [], extendedHours: false }
 let serverData  = null   // last confirmed saved state
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -49,6 +49,7 @@ async function init() {
     editingData = deepClone(data)
     editingData.announcements = editingData.announcements ?? []
     editingData.overrides     = editingData.overrides     ?? []
+    editingData.extendedHours = editingData.extendedHours ?? false
     renderLastSaved(data)
   } catch {
     showToast('Could not load timetable data.', 'error')
@@ -59,6 +60,7 @@ async function init() {
   renderExams()
   renderAnnouncements()
   renderOverrides()
+  renderHoursToggle()
 }
 
 // ── Fetch helper ──────────────────────────────────────────────
@@ -277,6 +279,11 @@ function applySaveResult(result) {
     editingData.overrides = result.overrides
     renderOverrides()
   }
+  if (typeof result.extendedHours === 'boolean') {
+    serverData = { ...serverData, extendedHours: result.extendedHours }
+    editingData.extendedHours = result.extendedHours
+    renderHoursToggle()
+  }
   renderLastSaved(result)
 }
 
@@ -286,6 +293,7 @@ function buildPayload(patch = {}) {
     exams:         serverData?.exams         ?? editingData.exams,
     announcements: serverData?.announcements ?? editingData.announcements,
     overrides:     serverData?.overrides     ?? editingData.overrides,
+    extendedHours: serverData?.extendedHours ?? editingData.extendedHours ?? false,
     ...patch
   }
 }
@@ -559,6 +567,34 @@ async function saveOverrides() {
   }
 }
 
+// ── Extended hours toggle ─────────────────────────────────────
+function renderHoursToggle() {
+  const short    = document.getElementById('hoursShort')
+  const extended = document.getElementById('hoursExtended')
+  if (!short || !extended) return
+  const isExtended = editingData.extendedHours ?? false
+  short.classList.toggle('active', !isExtended)
+  extended.classList.toggle('active', isExtended)
+}
+
+async function saveExtendedHours(value) {
+  editingData.extendedHours = value
+  renderHoursToggle()
+  showSaveBar('saving')
+  try {
+    const result = await apiFetch('/api/save', {
+      method: 'POST',
+      body: JSON.stringify(buildPayload({ extendedHours: value }))
+    })
+    applySaveResult(result)
+    showSaveBar('saved')
+    showToast(value ? 'Extended to 5 PM ✓' : 'Ends at 3 PM ✓', 'success')
+  } catch (err) {
+    showSaveBar('error')
+    showToast('Save failed: ' + err.message, 'error')
+  }
+}
+
 // ── Login / Logout ────────────────────────────────────────────
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault()
@@ -581,6 +617,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     editingData = deepClone(data)
     editingData.announcements = editingData.announcements ?? []
     editingData.overrides     = editingData.overrides     ?? []
+    editingData.extendedHours = editingData.extendedHours ?? false
     renderLastSaved(data)
     hide('loginSection')
     show('dashboard')
@@ -588,6 +625,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     renderExams()
     renderAnnouncements()
     renderOverrides()
+    renderHoursToggle()
   } catch (e) {
     err.textContent = e.message
     btn.disabled = false
@@ -631,6 +669,9 @@ document.getElementById('addExamBtn').addEventListener('click', () => {
   editingData.exams.push({ label: '', date: '' })
   renderExams()
 })
+document.getElementById('hoursShort').addEventListener('click',    () => saveExtendedHours(false))
+document.getElementById('hoursExtended').addEventListener('click', () => saveExtendedHours(true))
+
 document.getElementById('addOvrBtn').addEventListener('click', async () => {
   const date  = document.getElementById('ovrDate').value
   const type  = document.getElementById('ovrType').value

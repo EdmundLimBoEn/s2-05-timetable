@@ -114,6 +114,28 @@ html, body {
   margin: 0 auto;
 }
 
+/* ── Timetable controls row ──────────────────────────────────── */
+.tt-controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.tt-controls .week-toggle { margin-bottom: 0; }
+.hours-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hours-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
 /* ── Week toggle ─────────────────────────────────────────────── */
 .week-toggle {
   display: flex;

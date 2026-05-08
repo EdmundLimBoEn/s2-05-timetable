@@ -1,21 +1,28 @@
 // S2-05 · Term 2 2026
 
 // ── Constants ──────────────────────────────────────────────────
-const N_COLS = 21
 
-const TIMES = [
+// Full possible grid: 08:00 → 17:00 (27 × 20-min slots)
+const ALL_TIMES_FULL = [
   '08:00','08:20','08:40','09:00','09:20','09:40',
   '10:00','10:20','10:40','11:00','11:20','11:40',
   '12:00','12:20','12:40','13:00','13:20','13:40',
-  '14:00','14:20','14:40'
+  '14:00','14:20','14:40',
+  '15:00','15:20','15:40','16:00','16:20','16:40'
 ]
 
-const ALL_MINS = TIMES.map(t => {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-})
+// N_COLS=21 → ends 15:00; N_COLS=27 → ends 17:00
+let N_COLS   = 21
+let TIMES    = ALL_TIMES_FULL.slice(0, N_COLS)
+let ALL_MINS = TIMES.map(t => { const [h,m]=t.split(':').map(Number); return h*60+m })
+let END_MIN  = ALL_MINS[ALL_MINS.length - 1] + 20
 
-const END_MIN = ALL_MINS[ALL_MINS.length - 1] + 20
+function setExtendedHours(extended) {
+  N_COLS   = extended ? 27 : 21
+  TIMES    = ALL_TIMES_FULL.slice(0, N_COLS)
+  ALL_MINS = TIMES.map(t => { const [h,m]=t.split(':').map(Number); return h*60+m })
+  END_MIN  = ALL_MINS[ALL_MINS.length - 1] + 20
+}
 
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri']
 
@@ -1362,6 +1369,13 @@ setTimeout(async () => {
       const remoteOverrides = Array.isArray(remote.overrides) ? remote.overrides : []
       const overridesChanged = JSON.stringify(remoteOverrides) !== JSON.stringify(OVERRIDES)
       OVERRIDES = remoteOverrides
+
+      // Extended hours: apply before any rebuild
+      if (typeof remote.extendedHours === 'boolean') {
+        const isExtended = N_COLS > 21
+        if (remote.extendedHours !== isExtended) setExtendedHours(remote.extendedHours)
+      }
+
       if (overridesChanged) rebuild()
 
       if (remote.updatedAt === lastUpdatedAt) return   // timetable/exams unchanged

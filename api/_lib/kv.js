@@ -25,12 +25,13 @@ export async function getData() {
   }
 }
 
-export async function setData(timetable, exams, announcements, overrides, username) {
+export async function setData(timetable, exams, announcements, overrides, extendedHours, username) {
   const data = {
     timetable,
     exams,
-    announcements: announcements ?? [],
-    overrides:     overrides     ?? [],
+    announcements:  announcements  ?? [],
+    overrides:      overrides      ?? [],
+    extendedHours:  extendedHours  ?? false,
     updatedAt: new Date().toISOString(),
     updatedBy: username
   }
