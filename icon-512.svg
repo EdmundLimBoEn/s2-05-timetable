@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#080808"/>
+
+  <!-- Red inset border -->
+  <rect x="18" y="18" width="476" height="476" fill="none" stroke="#ff3b3b" stroke-width="10"/>
+
+  <!-- Pixel art capital T -->
+  <!-- Grid: 40px cells, 7 cols × 9 rows, centred at (116, 76) -->
+  <!-- Top bar: row 0 (y=76), all 7 columns -->
+  <rect x="116" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="156" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="196" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="276" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="316" y="76" width="38" height="38" fill="#ffffff"/>
+  <rect x="356" y="76" width="38" height="38" fill="#ffffff"/>
+
+  <!-- Stem: column 3 (x=236), rows 1–8 -->
+  <rect x="236" y="118" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="158" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="198" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="238" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="278" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="318" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="358" width="38" height="38" fill="#ffffff"/>
+  <rect x="236" y="398" width="38" height="38" fill="#ffffff"/>
+
+  <!-- Red accent: corner pixels of top bar -->
+  <rect x="116" y="76" width="38" height="38" fill="#ff3b3b" opacity="0.55"/>
+  <rect x="356" y="76" width="38" height="38" fill="#ff3b3b" opacity="0.55"/>
+</svg>

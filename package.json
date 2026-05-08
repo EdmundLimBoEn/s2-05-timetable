@@ -1,0 +1,11 @@
+{
+  "name": "s2-05-timetable",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^2.3.3",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6"
+  }
+}

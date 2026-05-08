@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Black background -->
+  <rect width="32" height="32" fill="#080808"/>
+
+  <!-- Red inset border -->
+  <rect x="0.5" y="0.5" width="31" height="31" fill="none" stroke="#ff3b3b" stroke-width="1"/>
+
+  <!--
+    Pixel-art T:
+    Cell size = 2px, gap = 1px, step = 3px
+    9 cols (x: 2, 5, 8, 11, 14, 17, 20, 23, 26) — top bar spans all 9
+    Stem: cols 3,4,5 (x: 11, 14, 17) — centred under top bar
+    Rows: y start = 3
+    Row 0 (top bar): y=3
+    Rows 1–8 (stem): y=6,9,12,15,18,21,24,27
+    Total height: row 0..8 = 9 rows × 3 = 27px, y=3..29 — fits nicely in 32px
+  -->
+
+  <!-- Row 0: top bar — all 9 cols -->
+  <rect x="2"  y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="5"  y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="8"  y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="11" y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="20" y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="23" y="3" width="2" height="2" fill="#ffffff"/>
+  <rect x="26" y="3" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 1: stem — cols 3,4,5 (x=11,14,17) -->
+  <rect x="11" y="6" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="6" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="6" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 2 -->
+  <rect x="11" y="9" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="9" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="9" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 3 -->
+  <rect x="11" y="12" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="12" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="12" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 4 -->
+  <rect x="11" y="15" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="15" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="15" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 5 -->
+  <rect x="11" y="18" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="18" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="18" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 6 -->
+  <rect x="11" y="21" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="21" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="21" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 7 -->
+  <rect x="11" y="24" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="24" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="24" width="2" height="2" fill="#ffffff"/>
+
+  <!-- Row 8 -->
+  <rect x="11" y="27" width="2" height="2" fill="#ffffff"/>
+  <rect x="14" y="27" width="2" height="2" fill="#ffffff"/>
+  <rect x="17" y="27" width="2" height="2" fill="#ffffff"/>
+</svg>

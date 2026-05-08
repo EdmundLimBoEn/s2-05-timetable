@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>S2-05 Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+  <!-- ── Login ──────────────────────────────────────────────── -->
+  <div id="loginSection" class="hidden">
+    <div class="login-card">
+      <span class="login-title">S2-05 ADMIN<span class="cursor">█</span></span>
+      <span class="login-sub">TIMETABLE MANAGEMENT</span>
+      <form id="loginForm" autocomplete="on">
+        <input class="login-field" id="loginUser" type="text"
+               placeholder="username" autocomplete="username" required>
+        <input class="login-field" id="loginPass" type="password"
+               placeholder="password" autocomplete="current-password" required>
+        <button class="login-submit" id="loginBtn" type="submit">LOGIN</button>
+      </form>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <!-- ── Dashboard ──────────────────────────────────────────── -->
+  <div id="dashboard" class="hidden">
+    <header class="admin-topbar">
+      <span class="admin-title">S2-05 ADMIN<span class="cursor">█</span></span>
+      <span class="admin-user-chip" id="adminUser"></span>
+      <button class="btn danger small" id="logoutBtn">LOGOUT</button>
+    </header>
+
+    <nav class="admin-tabs">
+      <button class="admin-tab active" data-tab="timetable">TIMETABLE</button>
+      <button class="admin-tab"        data-tab="exams">EXAMS</button>
+    </nav>
+
+    <!-- Timetable tab -->
+    <div class="admin-content" id="tabTimetable">
+      <div style="height:16px"></div>
+      <div class="week-toggle">
+        <button class="week-btn active" data-week="odd">ODD WEEK</button>
+        <button class="week-btn"        data-week="even">EVEN WEEK</button>
+      </div>
+      <div class="last-saved" id="lastSaved"></div>
+      <div id="dayCards"></div>
+      <div class="save-bar">
+        <button class="btn primary" id="saveTimetableBtn">SAVE TIMETABLE</button>
+        <span class="save-status" id="saveTimetableStatus"></span>
+      </div>
+    </div>
+
+    <!-- Exams tab -->
+    <div class="admin-content hidden" id="tabExams">
+      <div style="height:16px"></div>
+      <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:16px">
+        UPCOMING EXAM DATES · shown on the public site within 7 days of each exam
+      </p>
+      <div id="examsList"></div>
+      <button class="btn small" id="addExamBtn" style="margin-bottom:12px">+ ADD EXAM</button>
+      <div class="save-bar">
+        <button class="btn primary" id="saveExamsBtn">SAVE EXAMS</button>
+        <span class="save-status" id="saveExamsStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
