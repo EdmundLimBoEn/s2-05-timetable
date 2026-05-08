@@ -20,20 +20,21 @@ const END_MIN = ALL_MINS[ALL_MINS.length - 1] + 20
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri']
 
 const ABBREV = {
-  el:    'EL',
-  math:  'MATH',
-  sci:   'SCI',
-  hum:   'HUM',
-  mt:    'CL',
-  sw:    'S&W',
-  cce:   'CCE',
-  hsl:   'HSL',
-  hbl:   'HBL',
-  cm:    'CM',
-  admt:  'ADMT',
-  ict:   'ICT',
-  brk:   'BREAK',
-  empty: ''
+  el:      'EL',
+  math:    'MATH',
+  sci:     'SCI',
+  hum:     'HUM',
+  mt:      'CL',
+  sw:      'S&W',
+  cce:     'CCE',
+  hsl:     'HSL',
+  hbl:     'HBL',
+  cm:      'CM',
+  admt:    'ADMT',
+  ict:     'ICT',
+  brk:     'BREAK',
+  empty:   '',
+  holiday: 'HOL'
 }
 
 // First Monday of Term 1 2026 (Week 1). Odd/even alternates continuously across all terms.
@@ -488,6 +489,24 @@ function initJournal() {
   })
 }
 
+// ── Overrides ──────────────────────────────────────────────────
+let OVERRIDES = []
+
+function iso(d) { return d.toISOString().slice(0, 10) }
+
+// Calendar date represented by a given (wk, dayIdx) row,
+// computed relative to today. If wk !== calcWeek(), jumps to next week.
+function dateForRow(wk, di) {
+  const today  = new Date(); today.setHours(0, 0, 0, 0)
+  const dow    = today.getDay() || 7                          // Mon=1 … Sun=7
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dow - 1))                 // walk back to Monday
+  if (calcWeek() !== wk) monday.setDate(monday.getDate() + 7) // jump to nearest other-parity week
+  const d = new Date(monday)
+  d.setDate(monday.getDate() + di)
+  return d
+}
+
 // ── Announcements ──────────────────────────────────────────────
 let ANNCS = []
 
@@ -695,6 +714,14 @@ function buildTable(wk) {
   html += '</tr></thead><tbody>'
 
   TIMETABLE[wk].forEach((blocks, di) => {
+    const rowDate = dateForRow(wk, di)
+    const ov      = OVERRIDES.find(o => o.date === iso(rowDate))
+    if (ov) {
+      blocks = ov.type === 'holiday'
+        ? [{ label: `HOLIDAY · ${ov.label}`, span: 30, style: 'holiday' }]
+        : ov.blocks
+    }
+
     const isToday = (di + 1) === getEffectiveDow()
     html += `<tr${isToday ? ' class="today-row"' : ''}>`
     html += `<td class="td-day" title="Tap to mark absent">${DAY_LABELS[di]}</td>`
@@ -1326,11 +1353,16 @@ setTimeout(async () => {
       if (!res.ok) return
       const remote = await res.json()
 
-      // Announcements: always sync regardless of updatedAt
+      // Announcements + overrides: always sync regardless of updatedAt
       const remoteAnncs = Array.isArray(remote.announcements) ? remote.announcements : []
       checkNewAnncs(remoteAnncs)
       ANNCS = remoteAnncs
       renderAnncs()
+
+      const remoteOverrides = Array.isArray(remote.overrides) ? remote.overrides : []
+      const overridesChanged = JSON.stringify(remoteOverrides) !== JSON.stringify(OVERRIDES)
+      OVERRIDES = remoteOverrides
+      if (overridesChanged) rebuild()
 
       if (remote.updatedAt === lastUpdatedAt) return   // timetable/exams unchanged
       lastUpdatedAt = remote.updatedAt

@@ -493,6 +493,62 @@ html, body {
   padding: 12px 0 8px;
 }
 
+/* ── Overrides ───────────────────────────────────────────────── */
+.ovr-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.ovr-form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.ovr-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.ovr-card-body { flex: 1; min-width: 0; }
+.ovr-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.ovr-card-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.06em;
+}
+.ovr-card-label {
+  font-family: 'VT323', monospace;
+  font-size: 1.15rem;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+.ovr-type-pill {
+  display: inline-block;
+  font-family: 'VT323', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+.ovr-type-pill.holiday { background: rgba(255,59,59,0.15);  color: var(--red); }
+.ovr-type-pill.custom  { background: rgba(79,195,247,0.15); color: #4fc3f7; }
+
+.ovr-block-list { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.ovr-span-counter {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.08em;
+  margin: 6px 0 4px;
+}
+.ovr-span-counter.invalid { color: var(--red); }
+.disabled-look { opacity: 0.4; cursor: not-allowed; }
+
 /* ── Save indicator bar ──────────────────────────────────────── */
 .save-bar-indicator {
   position: fixed;
