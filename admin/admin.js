@@ -257,18 +257,20 @@ function renderExams() {
 }
 
 // ── Save helpers ──────────────────────────────────────────────
-// After any successful save, re-fetch from the server so serverData
-// always holds server-assigned fields (id, createdAt, createdBy for
-// announcements). Without this, each subsequent save re-generates
-// those fields, corrupting the announcement list.
-async function syncFromServer() {
-  try {
-    const data = await apiFetch('/api/admin-data')
-    serverData = data
-    editingData.announcements = data.announcements ?? []
+// After a successful save the server returns the full saved state
+// (including server-assigned id/createdAt/createdBy for announcements).
+// We apply that directly so we never need a second GET that could
+// race with blob propagation delay and return stale data.
+function applySaveResult(result) {
+  if (Array.isArray(result.announcements)) {
+    serverData = { ...serverData, announcements: result.announcements }
+    editingData.announcements = result.announcements
     renderAnnouncements()
-    renderLastSaved(data)
-  } catch { /* non-fatal — UI already shows Saved! */ }
+  }
+  if (Array.isArray(result.exams)) {
+    serverData = { ...serverData, exams: result.exams }
+  }
+  renderLastSaved(result)
 }
 
 function buildPayload(overrides = {}) {
@@ -298,12 +300,13 @@ async function saveTimetable() {
   })
 
   try {
-    await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(payload) })
+    const result = await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(payload) })
     editingData.timetable[otherWeek] = payload.timetable[otherWeek]
+    serverData = { ...serverData, timetable: payload.timetable }
+    applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Timetable saved ✓', 'success')
-    await syncFromServer()
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
@@ -322,14 +325,14 @@ async function saveExams() {
   status.className = 'save-status'
 
   try {
-    await apiFetch('/api/save', {
+    const result = await apiFetch('/api/save', {
       method: 'POST',
       body: JSON.stringify(buildPayload({ exams: editingData.exams }))
     })
+    applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Exams saved ✓', 'success')
-    await syncFromServer()
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
@@ -408,14 +411,14 @@ async function saveAnnouncements() {
   status.className = 'save-status'
 
   try {
-    await apiFetch('/api/save', {
+    const result = await apiFetch('/api/save', {
       method: 'POST',
       body: JSON.stringify(buildPayload({ announcements: editingData.announcements }))
     })
+    applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Announcements saved ✓', 'success')
-    await syncFromServer()  // re-fetch so editingData has server-assigned id/createdAt
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
