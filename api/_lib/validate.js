@@ -5,11 +5,13 @@ const WEEKS   = ['odd', 'even']
 const N_DAYS  = 5
 const SPAN_TOTAL = 30
 
+const VALID_CATEGORIES = new Set(['general', 'homework', 'exam', 'event'])
+
 export function validateData(body) {
   const errors = []
   if (!body || typeof body !== 'object') return ['Invalid payload']
 
-  const { timetable, exams } = body
+  const { timetable, exams, announcements } = body
 
   // Validate timetable
   if (!timetable || typeof timetable !== 'object') {
@@ -63,6 +65,25 @@ export function validateData(body) {
         errors.push(`exams[${i}].date must be YYYY-MM-DD (got "${e.date}")`)
       }
     })
+  }
+
+  // Validate announcements (optional field — absent means no change)
+  if (announcements !== undefined) {
+    if (!Array.isArray(announcements)) {
+      errors.push('announcements must be an array')
+    } else {
+      announcements.forEach((a, i) => {
+        if (typeof a.title !== 'string' || !a.title.trim() || a.title.length > 100) {
+          errors.push(`announcements[${i}].title must be a non-empty string ≤100 chars`)
+        }
+        if (typeof a.body !== 'string' || a.body.length > 5000) {
+          errors.push(`announcements[${i}].body must be a string ≤5000 chars`)
+        }
+        if (!VALID_CATEGORIES.has(a.category)) {
+          errors.push(`announcements[${i}].category must be one of: ${[...VALID_CATEGORIES].join(', ')}`)
+        }
+      })
+    }
   }
 
   return errors

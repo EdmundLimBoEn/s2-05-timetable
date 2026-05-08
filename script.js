@@ -473,78 +473,176 @@ function clearNote() {
   closeNoteModal()
 }
 
-// ── Homework tracker ───────────────────────────────────────────
-function loadHw() { return JSON.parse(localStorage.getItem('hw-v1') || '{}') }
-function saveHw(d) { localStorage.setItem('hw-v1', JSON.stringify(d)) }
+// ── Journal ────────────────────────────────────────────────────
+function loadJournal() { return localStorage.getItem('journal-v1') || '' }
+function saveJournal(text) { localStorage.setItem('journal-v1', text) }
 
-function getSubjectList() {
-  const s = new Set()
-  for (const wk of ['odd', 'even'])
-    for (const day of TIMETABLE[wk])
-      for (const b of day)
-        if (b.style !== 'empty' && b.style !== 'brk') s.add(b.style)
-  return [...s]
+let journalDebounce = null
+function initJournal() {
+  const ta = document.getElementById('journalText')
+  if (!ta) return
+  ta.value = loadJournal()
+  ta.addEventListener('input', () => {
+    clearTimeout(journalDebounce)
+    journalDebounce = setTimeout(() => saveJournal(ta.value), 500)
+  })
 }
 
-function updateHwBadge() {
-  const hw      = loadHw()
-  const pending = Object.values(hw).flat().filter(t => !t.done).length
-  const btn     = document.getElementById('btnTheme')
-  if (!btn) return
-  btn.classList.toggle('has-hw', pending > 0)
-  btn.dataset.hwCount = pending > 0 ? String(pending) : ''
+// ── Announcements ──────────────────────────────────────────────
+let ANNCS = []
+
+function loadAnncsSeen() { return new Set(JSON.parse(localStorage.getItem('anncs-seen') || '[]')) }
+function markAnncsSeen(ids) {
+  const seen = loadAnncsSeen()
+  ids.forEach(id => seen.add(id))
+  localStorage.setItem('anncs-seen', JSON.stringify([...seen]))
 }
 
-function buildHwSection() {
-  const el = document.getElementById('hwSection')
-  if (!el) return
-  const hw   = loadHw()
-  const subs = getSubjectList()
-  el.innerHTML = subs.map(key => {
-    const items = hw[key] || []
-    const label = ABBREV[key] || key.toUpperCase()
-    const rows  = items.map((t, i) => `
-      <label class="hw-item${t.done ? ' hw-done' : ''}">
-        <input type="checkbox" data-key="${key}" data-idx="${i}"${t.done ? ' checked' : ''}>
-        <span class="hw-text">${t.text.replace(/</g,'&lt;')}</span>
-        <button class="hw-del" data-key="${key}" data-idx="${i}">&#x2715;</button>
-      </label>`).join('')
-    return `<div class="hw-subj" style="border-left-color:var(--c-${key})">
-      <div class="hw-subj-hd">${label}</div>
-      ${rows}
-      <div class="hw-add-row">
-        <input class="hw-input" data-key="${key}" placeholder="add task…" maxlength="60" autocomplete="off">
-        <button class="hw-add-btn" data-key="${key}">+</button>
+function renderAnncs() {
+  const container = document.getElementById('anncsList')
+  if (!container) return
+  const sorted = [...ANNCS].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  if (!sorted.length) {
+    container.innerHTML = '<p class="anncs-empty">No announcements.</p>'
+    return
+  }
+  container.innerHTML = sorted.map(a => {
+    const date = a.createdAt ? new Date(a.createdAt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : ''
+    const body = a.body ? `<div class="anncs-card-text">${a.body.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''
+    return `<div class="anncs-card">
+      <div class="anncs-card-hd">
+        <span class="anncs-cat-pill ${a.category}">${a.category.toUpperCase()}</span>
+        <span class="anncs-card-title">${a.title.replace(/</g,'&lt;')}</span>
       </div>
+      ${body}
+      <div class="anncs-card-meta">${date}</div>
     </div>`
   }).join('')
+}
 
-  el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', e => {
-    const data = loadHw()
-    const { key, idx } = e.target.dataset
-    data[key][parseInt(idx)].done = e.target.checked
-    saveHw(data); buildHwSection(); updateHwBadge()
-  }))
-  el.querySelectorAll('.hw-del').forEach(btn => btn.addEventListener('click', e => {
-    const data = loadHw()
-    const { key, idx } = e.target.dataset
-    data[key].splice(parseInt(idx), 1)
-    saveHw(data); buildHwSection(); updateHwBadge()
-  }))
-  el.querySelectorAll('.hw-add-btn').forEach(btn => btn.addEventListener('click', e => {
-    const key = e.target.dataset.key
-    const inp = el.querySelector(`.hw-input[data-key="${key}"]`)
-    const text = inp.value.trim()
-    if (!text) return
-    const data = loadHw()
-    ;(data[key] = data[key] || []).push({ text, done: false })
-    saveHw(data); buildHwSection(); updateHwBadge()
-    // keep focus in the input for rapid entry
-    el.querySelector(`.hw-input[data-key="${key}"]`)?.focus()
-  }))
-  el.querySelectorAll('.hw-input').forEach(inp => inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter') el.querySelector(`.hw-add-btn[data-key="${inp.dataset.key}"]`).click()
-  }))
+let toastQueue = []
+let toastBusy  = false
+
+function showAnncToast(annc) {
+  toastQueue.push(annc)
+  if (!toastBusy) drainToastQueue()
+}
+
+function drainToastQueue() {
+  if (!toastQueue.length) { toastBusy = false; return }
+  toastBusy = true
+  const annc = toastQueue.shift()
+  const el   = document.getElementById('anncToast')
+  const cat  = document.getElementById('anncToastCat')
+  const ttl  = document.getElementById('anncToastTitle')
+  if (!el) { drainToastQueue(); return }
+  cat.textContent  = annc.category.toUpperCase()
+  cat.className    = `annc-toast-cat ${annc.category}`
+  ttl.textContent  = annc.title
+  markAnncsSeen([annc.id])
+  el.style.display = 'flex'
+  el.classList.add('visible')
+  clearTimeout(toastAutoHide)
+  toastAutoHide = setTimeout(() => dismissAnncToast(), 6000)
+}
+
+let toastAutoHide = null
+function dismissAnncToast() {
+  const el = document.getElementById('anncToast')
+  if (!el) return
+  el.classList.remove('visible')
+  setTimeout(() => {
+    el.style.display = 'none'
+    setTimeout(drainToastQueue, 200)
+  }, 300)
+}
+
+function checkNewAnncs(list) {
+  const seen = loadAnncsSeen()
+  list.filter(a => a.id && !seen.has(a.id)).forEach(showAnncToast)
+}
+
+// ── Bottom panel layout ────────────────────────────────────────
+let bottomLayout = localStorage.getItem('bottom-layout') || 'split'
+let activeBottomPane = 'journal'
+
+function setBottomLayout(mode) {
+  bottomLayout = mode
+  localStorage.setItem('bottom-layout', mode)
+  const panel  = document.getElementById('bottomPanel')
+  const toggle = document.getElementById('bottomPaneToggle')
+  if (!panel) return
+  panel.classList.toggle('split-mode', mode === 'split')
+  panel.classList.toggle('single-mode', mode === 'single')
+  if (toggle) toggle.style.display = mode === 'single' ? '' : 'none'
+  const splitBtn  = document.getElementById('btnLayoutSplit')
+  const singleBtn = document.getElementById('btnLayoutSingle')
+  if (splitBtn)  { splitBtn.classList.toggle('active', mode === 'split');  splitBtn.setAttribute('aria-pressed', String(mode === 'split')) }
+  if (singleBtn) { singleBtn.classList.toggle('active', mode === 'single'); singleBtn.setAttribute('aria-pressed', String(mode === 'single')) }
+  // Pill positioning requires the toolbar to be visible — defer one frame
+  requestAnimationFrame(() => movePill('pillLayout', mode === 'split' ? splitBtn : singleBtn))
+  if (mode === 'single') setBottomPane(activeBottomPane)
+  else {
+    document.getElementById('journalPane')?.classList.remove('hidden')
+    document.getElementById('anncsPane')?.classList.remove('hidden')
+  }
+}
+
+function setBottomPane(pane) {
+  activeBottomPane = pane
+  document.getElementById('journalPane')?.classList.toggle('hidden', pane !== 'journal')
+  document.getElementById('anncsPane')?.classList.toggle('hidden', pane !== 'anncs')
+  const jBtn = document.getElementById('btnPaneJournal')
+  const aBtn = document.getElementById('btnPaneAnncs')
+  if (jBtn) { jBtn.classList.toggle('active', pane === 'journal'); jBtn.setAttribute('aria-pressed', String(pane === 'journal')) }
+  if (aBtn) { aBtn.classList.toggle('active', pane === 'anncs');   aBtn.setAttribute('aria-pressed', String(pane === 'anncs')) }
+  requestAnimationFrame(() => movePill('pillBottomPane', pane === 'journal' ? jBtn : aBtn))
+}
+
+// ── Bottom panel resize ────────────────────────────────────────
+const BOTTOM_MIN_H = 100
+const BOTTOM_MAX_H = Math.round(window.innerHeight * 0.7)
+
+function initResize() {
+  const handle = document.getElementById('resizeHandle')
+  const panel  = document.getElementById('bottomPanel')
+  if (!handle || !panel) return
+
+  const saved = parseInt(localStorage.getItem('bottom-height') || '')
+  if (!isNaN(saved)) panel.style.height = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+
+  let dragStartY = 0, dragStartH = 0
+
+  function onMove(clientY) {
+    const dy = dragStartY - clientY
+    const h  = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, dragStartH + dy))
+    panel.style.height = h + 'px'
+  }
+  function onUp() {
+    localStorage.setItem('bottom-height', Math.round(parseFloat(panel.style.height) || 260))
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup',   onUp)
+    document.removeEventListener('touchmove', onTouchMove)
+    document.removeEventListener('touchend',  onUp)
+    document.body.style.cursor = ''
+  }
+  function onMouseMove(e) { onMove(e.clientY) }
+  function onTouchMove(e) { e.preventDefault(); onMove(e.touches[0].clientY) }
+
+  handle.addEventListener('mousedown', e => {
+    dragStartY = e.clientY
+    dragStartH = panel.getBoundingClientRect().height
+    document.body.style.cursor = 'ns-resize'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup',   onUp)
+    e.preventDefault()
+  })
+  handle.addEventListener('touchstart', e => {
+    dragStartY = e.touches[0].clientY
+    dragStartH = panel.getBoundingClientRect().height
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend',  onUp)
+  }, { passive: true })
 }
 
 // ── B10: PWA install prompt ────────────────────────────────────
@@ -919,7 +1017,6 @@ function buildSettingsPanel() {
   applyCompact()
   updateNotifBtns()
   buildStats()
-  buildHwSection()
   updateInstallBtn()
 }
 
@@ -1220,14 +1317,22 @@ setTimeout(async () => {
   rebuild()
   checkExams()
 
-  // Fetch live data; re-render only when updatedAt changes
+  // Fetch live data; re-render timetable/exams only when updatedAt changes,
+  // but always sync announcements so they appear even on first load.
   let lastUpdatedAt = null
   async function refreshData() {
     try {
       const res = await fetch('/api/data', { cache: 'no-store' })
       if (!res.ok) return
       const remote = await res.json()
-      if (remote.updatedAt === lastUpdatedAt) return   // nothing changed
+
+      // Announcements: always sync regardless of updatedAt
+      const remoteAnncs = Array.isArray(remote.announcements) ? remote.announcements : []
+      checkNewAnncs(remoteAnncs)
+      ANNCS = remoteAnncs
+      renderAnncs()
+
+      if (remote.updatedAt === lastUpdatedAt) return   // timetable/exams unchanged
       lastUpdatedAt = remote.updatedAt
       if (remote.timetable) TIMETABLE = remote.timetable
       if (Array.isArray(remote.exams)) EXAMS = remote.exams
@@ -1244,7 +1349,10 @@ setTimeout(async () => {
 
   scrollToNow()
   updateOnlineStatus()
-  updateHwBadge()
+  initJournal()
+  renderAnncs()
+  setBottomLayout(bottomLayout)
+  initResize()
 }, 50)
 
 // ── B3: Touch swipe to switch week ────────────────────────────
@@ -1281,6 +1389,9 @@ wrap.addEventListener('click', e => {
   if (!cell || !cell.id.startsWith('c-')) return
   openNoteModal(cell.id)
 })
+
+// ── Announcement toast close ───────────────────────────────────
+document.getElementById('anncToastClose')?.addEventListener('click', dismissAnncToast)
 
 // ── B7: Note modal buttons ─────────────────────────────────────
 document.getElementById('noteSave')?.addEventListener('click', saveNote)

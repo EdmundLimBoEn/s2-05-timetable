@@ -115,5 +115,6 @@ export const SEED = {
     { label: 'T2 CA · EL',   date: '2026-05-15' },
     { label: 'T2 CA · HUM',  date: '2026-05-19' },
     { label: 'T2 CA · CL',   date: '2026-05-20' }
-  ]
+  ],
+  announcements: []
 }

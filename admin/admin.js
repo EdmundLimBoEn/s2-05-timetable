@@ -30,7 +30,7 @@ const SUBJECT_KEYS = Object.keys(SUBJECT_DISPLAY)
 
 // ── State ─────────────────────────────────────────────────────
 let activeWeek = 'odd'
-let editingData = { timetable: { odd: [], even: [] }, exams: [] }
+let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [] }
 let serverData  = null   // last confirmed saved state
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -47,6 +47,7 @@ async function init() {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
+    editingData.announcements = editingData.announcements ?? []
     renderLastSaved(data)
   } catch {
     showToast('Could not load timetable data.', 'error')
@@ -55,6 +56,7 @@ async function init() {
   show('dashboard')
   renderTimetable()
   renderExams()
+  renderAnnouncements()
 }
 
 // ── Fetch helper ──────────────────────────────────────────────
@@ -254,42 +256,66 @@ function renderExams() {
   })
 }
 
+// ── Save helpers ──────────────────────────────────────────────
+// After a successful save the server returns the full saved state
+// (including server-assigned id/createdAt/createdBy for announcements).
+// We apply that directly so we never need a second GET that could
+// race with blob propagation delay and return stale data.
+function applySaveResult(result) {
+  if (Array.isArray(result.announcements)) {
+    serverData = { ...serverData, announcements: result.announcements }
+    editingData.announcements = result.announcements
+    renderAnnouncements()
+  }
+  if (Array.isArray(result.exams)) {
+    serverData = { ...serverData, exams: result.exams }
+  }
+  renderLastSaved(result)
+}
+
+function buildPayload(overrides = {}) {
+  return {
+    timetable:     serverData?.timetable     ?? editingData.timetable,
+    exams:         serverData?.exams         ?? editingData.exams,
+    announcements: serverData?.announcements ?? editingData.announcements,
+    ...overrides
+  }
+}
+
 // ── Save handlers ─────────────────────────────────────────────
 async function saveTimetable() {
-  const btn = document.getElementById('saveTimetableBtn')
+  const btn    = document.getElementById('saveTimetableBtn')
   const status = document.getElementById('saveTimetableStatus')
 
   btn.disabled = true
   status.textContent = 'Saving...'
   status.className = 'save-status'
+  showSaveBar('saving')
 
-  // Also sync the other week from server (don't overwrite with stale)
   const otherWeek = activeWeek === 'odd' ? 'even' : 'odd'
-  const payload = {
+  const payload = buildPayload({
     timetable: {
       [activeWeek]: editingData.timetable[activeWeek],
       [otherWeek]:  serverData?.timetable?.[otherWeek] ?? editingData.timetable[otherWeek]
-    },
-    exams: serverData?.exams ?? editingData.exams
-  }
+    }
+  })
 
   try {
-    const result = await apiFetch('/api/save', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-    serverData = { ...serverData, timetable: payload.timetable }
+    const result = await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(payload) })
     editingData.timetable[otherWeek] = payload.timetable[otherWeek]
-    renderLastSaved(result)
+    serverData = { ...serverData, timetable: payload.timetable }
+    applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
+    showSaveBar('saved')
     showToast('Timetable saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
+    showSaveBar('error')
     showToast('Save failed: ' + err.message, 'error')
   } finally {
-    validateAll()  // re-enables button based on state
+    validateAll()
   }
 }
 
@@ -300,28 +326,101 @@ async function saveExams() {
   btn.disabled = true
   status.textContent = 'Saving...'
   status.className = 'save-status'
-
-  const payload = {
-    timetable: serverData?.timetable ?? editingData.timetable,
-    exams:     editingData.exams
-  }
+  showSaveBar('saving')
 
   try {
     const result = await apiFetch('/api/save', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(buildPayload({ exams: editingData.exams }))
     })
-    serverData = { ...serverData, exams: editingData.exams }
-    renderLastSaved(result)
+    applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
+    showSaveBar('saved')
     showToast('Exams saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
+    showSaveBar('error')
     showToast('Save failed: ' + err.message, 'error')
   } finally {
     btn.disabled = false
+  }
+}
+
+// ── Announcements renderer ────────────────────────────────────
+function renderAnnouncements() {
+  const list = document.getElementById('anncsList')
+  if (!list) return
+  const anncs = editingData.announcements || []
+  list.innerHTML = ''
+
+  if (!anncs.length) {
+    const empty = document.createElement('p')
+    empty.className = 'anncs-empty'
+    empty.textContent = 'No announcements yet. Use the form above to post one.'
+    list.appendChild(empty)
+    return
+  }
+
+  // newest first
+  const sorted = [...anncs].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  sorted.forEach(annc => {
+    const idx = editingData.announcements.indexOf(annc)
+    const card = document.createElement('div')
+    card.className = 'annc-card'
+
+    const body = document.createElement('div')
+    body.className = 'annc-card-body'
+
+    const title = document.createElement('div')
+    title.className = 'annc-card-title'
+    title.textContent = annc.title
+
+    const meta = document.createElement('div')
+    meta.className = 'annc-card-meta'
+    const catPill = `<span class="annc-cat-pill ${annc.category}">${annc.category.toUpperCase()}</span>`
+    const date = annc.createdAt ? new Date(annc.createdAt).toLocaleString('en-SG') : 'new'
+    meta.innerHTML = `${catPill}${date}${annc.createdBy ? ' · ' + annc.createdBy : ''}`
+
+    body.appendChild(title)
+    body.appendChild(meta)
+
+    if (annc.body) {
+      const text = document.createElement('div')
+      text.className = 'annc-card-text'
+      text.textContent = annc.body
+      body.appendChild(text)
+    }
+
+    const delBtn = document.createElement('button')
+    delBtn.className = 'btn danger small'
+    delBtn.textContent = '✕'
+    delBtn.title = 'Delete announcement'
+    delBtn.addEventListener('click', async () => {
+      editingData.announcements.splice(idx, 1)
+      renderAnnouncements()
+      await saveAnnouncements()
+    })
+
+    card.appendChild(body)
+    card.appendChild(delBtn)
+    list.appendChild(card)
+  })
+}
+
+async function saveAnnouncements() {
+  showSaveBar('saving')
+  try {
+    const result = await apiFetch('/api/save', {
+      method: 'POST',
+      body: JSON.stringify(buildPayload({ announcements: editingData.announcements }))
+    })
+    applySaveResult(result)
+    showSaveBar('saved')
+  } catch (err) {
+    showSaveBar('error')
+    showToast('Save failed: ' + err.message, 'error')
   }
 }
 
@@ -345,11 +444,13 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
+    editingData.announcements = editingData.announcements ?? []
     renderLastSaved(data)
     hide('loginSection')
     show('dashboard')
     renderTimetable()
     renderExams()
+    renderAnnouncements()
   } catch (e) {
     err.textContent = e.message
     btn.disabled = false
@@ -371,6 +472,7 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     const name = tab.dataset.tab
     document.getElementById('tabTimetable').classList.toggle('hidden', name !== 'timetable')
     document.getElementById('tabExams').classList.toggle('hidden', name !== 'exams')
+    document.getElementById('tabAnnouncements').classList.toggle('hidden', name !== 'announcements')
   })
 })
 
@@ -391,6 +493,17 @@ document.getElementById('addExamBtn').addEventListener('click', () => {
   editingData.exams.push({ label: '', date: '' })
   renderExams()
 })
+document.getElementById('addAnncBtn').addEventListener('click', async () => {
+  const title = document.getElementById('anncTitle').value.trim()
+  if (!title) { showToast('Title is required', 'error'); return }
+  const body     = document.getElementById('anncBody').value.trim()
+  const category = document.getElementById('anncCategory').value
+  editingData.announcements.push({ title, body, category })
+  document.getElementById('anncTitle').value = ''
+  document.getElementById('anncBody').value  = ''
+  renderAnnouncements()
+  await saveAnnouncements()
+})
 
 // ── Helpers ───────────────────────────────────────────────────
 function show(id) { document.getElementById(id).classList.remove('hidden') }
@@ -406,6 +519,25 @@ function renderLastSaved(data) {
     el.textContent = `Last saved by ${data.updatedBy} · ${d.toLocaleString('en-SG')}`
   } else {
     el.textContent = 'Using default data — no saves yet.'
+  }
+}
+
+let _saveBarTimer = null
+function showSaveBar(state) {
+  const bar  = document.getElementById('saveBar')
+  const text = document.getElementById('saveBarText')
+  if (!bar) return
+  clearTimeout(_saveBarTimer)
+  bar.style.display = 'block'
+  bar.className = 'save-bar-indicator ' + state
+  if (state === 'saving') {
+    text.textContent = 'SAVING...'
+  } else if (state === 'saved') {
+    text.textContent = 'SAVED'
+    _saveBarTimer = setTimeout(() => { bar.style.display = 'none' }, 3000)
+  } else {
+    text.textContent = 'SAVE FAILED'
+    _saveBarTimer = setTimeout(() => { bar.style.display = 'none' }, 4000)
   }
 }
 

@@ -5,6 +5,7 @@ S2-05 SST Singapore school timetable, Term 2 2026.
 **Stack:** vanilla HTML + CSS + JS (public site) + Node.js serverless functions (API). No build step.
 **To preview locally:** `open index.html` (static only; API calls will fail without env vars)
 **Live site:** https://timetable.edmundlim.systems
+**Testing site:** https://testing.timetable.edmundlim.systems (preview alias — run `vercel deploy` then `vercel alias <url> testing.timetable.edmundlim.systems`)
 **Admin panel:** https://timetable.edmundlim.systems/admin
 **GitHub repo:** https://github.com/EdmundLimBoEn/s2-05-timetable (public, main branch)
 **Vercel project:** `edmundlimboens-projects/s2-05-timetable`
@@ -26,7 +27,7 @@ Admin panel (/admin/index.html + admin/admin.js)
 ```
 
 **Hosting:** Vercel (moved from GitHub Pages — needs serverless functions).
-**Storage:** Vercel Blob (private store). One file: `timetable-data.json`.
+**Storage:** Vercel Blob (private store). One file: `timetable-data.json`. Production and preview share the same blob store (same `BLOB_READ_WRITE_TOKEN`).
 **Auth:** JWT (HS256, `jose`) in an HTTP-only Secure SameSite=Strict cookie (`tt_session`, 7-day expiry). Admin list stored in `ADMINS_JSON` env var as `[{username, passwordHash}]` (bcrypt via `bcryptjs`).
 
 ---
@@ -36,33 +37,33 @@ Admin panel (/admin/index.html + admin/admin.js)
 ### Public site
 | File | Role |
 |------|------|
-| `index.html` | Shell — topbar, bars, demo banner, table mount, settings panel |
-| `script.js` | All data, logic, theme, demo mode, URL hash sync, live-data polling |
+| `index.html` | Shell — topbar, bars, demo banner, table mount, settings panel, bottom panel |
+| `script.js` | All data, logic, theme, demo mode, URL hash sync, live-data polling, journal, announcements |
 | `style.css` | All styles; colour tokens in `:root` |
 | `favicon.svg` | Browser-tab favicon — 32×32 pixel-art T |
 | `icon.svg` | PWA home-screen icon — 512×512 pixel-art T |
 | `manifest.json` | PWA manifest |
-| `sw.js` | Service worker (`tt-v5`): network-first `/api/data`, cache-first static, bypass `/admin` |
+| `sw.js` | Service worker (`tt-v7`): network-first `/api/data`, cache-first static, bypass `/admin` |
 
 ### API (Vercel serverless functions)
 | File | Role |
 |------|------|
 | `api/data.js` | `GET /api/data` — public, `s-maxage=10, stale-while-revalidate=30` |
 | `api/admin-data.js` | `GET /api/admin-data` — requires auth, `no-store` (used by admin panel) |
-| `api/save.js` | `POST /api/save` — requires auth, validates, writes blob |
+| `api/save.js` | `POST /api/save` — requires auth, validates, writes blob; assigns `id`/`createdAt`/`createdBy` for announcements server-side |
 | `api/login.js` | `POST /api/login` — bcrypt compare, sets JWT cookie. In-memory rate limit (5/15 min/IP) |
 | `api/logout.js` | `POST /api/logout` — clears cookie |
 | `api/me.js` | `GET /api/me` — returns `{username}` or 401 |
 | `api/_lib/auth.js` | JWT sign/verify, bcrypt compare, cookie helpers, `getAdminFromRequest()` |
-| `api/_lib/kv.js` | `getData()` / `setData()` — Vercel Blob read/write |
-| `api/_lib/seed.js` | Hardcoded fallback TIMETABLE + EXAMS (used when blob is empty) |
-| `api/_lib/validate.js` | Server-side validation: spans sum to 30/day, valid style keys, ISO dates |
+| `api/_lib/kv.js` | `getData()` / `setData(timetable, exams, announcements, username)` — Vercel Blob read/write |
+| `api/_lib/seed.js` | Hardcoded fallback TIMETABLE + EXAMS + `announcements: []` (used when blob is empty) |
+| `api/_lib/validate.js` | Server-side validation: spans sum to 30/day, valid style keys, ISO dates, announcement fields |
 
 ### Admin panel
 | File | Role |
 |------|------|
-| `admin/index.html` | Login card + dashboard shell (TIMETABLE / EXAMS tabs) |
-| `admin/admin.js` | SPA logic: render editors, save, login/logout, week toggle |
+| `admin/index.html` | Login card + dashboard shell (TIMETABLE / EXAMS / ANNCS tabs) |
+| `admin/admin.js` | SPA logic: render editors, save, login/logout, week toggle, announcements |
 | `admin/admin.css` | Dark terminal aesthetic, matches public site |
 
 ### Utilities
@@ -93,14 +94,49 @@ Admin panel (/admin/index.html + admin/admin.js)
 ### `EXAMS`
 Array of `{ label: string, date: 'YYYY-MM-DD' }`. Shown as an amber countdown bar within 7 days of each exam date.
 
+### `ANNOUNCEMENTS`
+Array of `{ id, title, body, category, createdAt, createdBy }` stored in the blob under key `announcements`.
+- `id` — UUID, assigned server-side by `api/save.js`
+- `title` — required, ≤100 chars
+- `body` — optional, ≤5000 chars
+- `category` — one of `general | homework | exam | event`
+- `createdAt` — ISO timestamp, assigned server-side
+- `createdBy` — username, assigned server-side
+
+Admin panel: ANNCS tab — add/delete announcements, then SAVE. Saved instantly to blob; public site picks up within 10 s.
+
+Public site: shown in the bottom panel (ANNOUNCEMENTS pane). New unseen announcements trigger a top-right toast (auto-dismiss 6 s, or ✕ to close). Seen state stored in `localStorage['anncs-seen']`.
+
 ### `ABBREV`
 Short labels shown inside cells. Keys must match every `style` value used in `TIMETABLE`.
 
 ### Blob storage (`timetable-data.json`)
 ```json
-{ "timetable": {...}, "exams": [...], "updatedAt": "ISO string", "updatedBy": "username" }
+{
+  "timetable": {...},
+  "exams": [...],
+  "announcements": [
+    { "id": "uuid", "title": "...", "body": "...", "category": "general", "createdAt": "ISO", "createdBy": "username" }
+  ],
+  "updatedAt": "ISO string",
+  "updatedBy": "username"
+}
 ```
 `getData()` uses `list()` + `blob.downloadUrl` (signed URL). Falls back to seed if blob missing. `setData()` uses `put()` with `allowOverwrite: true`.
+
+**Schema migration note:** Old blobs (pre-announcements) lack the `announcements` field. `api/save.js` defaults `body.announcements ?? []` so saving from admin always writes the field. `editingData.announcements` in admin.js is also defaulted with `?? []` after `deepClone(data)`.
+
+---
+
+## Bottom panel (public site)
+
+Below the timetable, between `<main>` and `<footer>`. Contains:
+- **Resize handle** — drag the toolbar bar up/down to resize. Height persisted in `localStorage['bottom-height']`.
+- **SPLIT / SINGLE toggle** — in the toolbar (right side). SPLIT = both panes side by side; SINGLE = one pane with JOURNAL/ANNCS pill toggle.
+- **Journal pane** (`#journalPane`) — free-form textarea, saved to `localStorage['journal-v1']`, debounced 500 ms.
+- **Announcements pane** (`#anncsPane`) — renders `ANNCS` global, sorted newest-first.
+
+Layout mode persisted in `localStorage['bottom-layout']` (default: `split`).
 
 ---
 
@@ -152,7 +188,12 @@ let lastUpdatedAt = null
 async function refreshData() {
   const res = await fetch('/api/data', { cache: 'no-store' })
   const remote = await res.json()
-  if (remote.updatedAt === lastUpdatedAt) return  // no change — skip re-render
+
+  // Announcements always synced (not gated on updatedAt)
+  ANNCS = Array.isArray(remote.announcements) ? remote.announcements : []
+  renderAnncs()
+
+  if (remote.updatedAt === lastUpdatedAt) return  // timetable/exams unchanged
   lastUpdatedAt = remote.updatedAt
   TIMETABLE = remote.timetable
   EXAMS = remote.exams
@@ -164,6 +205,7 @@ setTimeout(() => location.reload(), 3_600_000) // hard reload every hour
 ```
 
 - Public site renders immediately from hardcoded fallback, then overlays server data
+- Announcements are synced on every poll (not just when `updatedAt` changes)
 - Admin panel reads from `/api/admin-data` (no edge cache, requires auth cookie)
 
 ---
@@ -190,15 +232,18 @@ vercel deploy --prod
 ## Deployment
 
 ```bash
-vercel deploy --prod
+vercel deploy --prod          # production
+vercel deploy                 # preview (then alias to testing subdomain)
+vercel alias <preview-url> testing.timetable.edmundlim.systems
 ```
 
 Vercel CLI must be installed (`npm i -g vercel`) and linked (`vercel link`).
 
 The GitHub repo is connected to Vercel — pushes to `main` trigger automatic deploys too.
 
-### Custom domain
-`timetable.edmundlim.systems` — DNS: A record `timetable → 76.76.21.21` at Cloudflare (DNS-only, not proxied).
+### Custom domains
+- `timetable.edmundlim.systems` — production. DNS: A record `timetable → 76.76.21.21` at Cloudflare (DNS-only, not proxied).
+- `testing.timetable.edmundlim.systems` — preview alias. DNS: A record `testing.timetable → 76.76.21.21` at Cloudflare (DNS-only). Re-alias after each preview deploy.
 
 ---
 
@@ -216,7 +261,7 @@ The GitHub repo is connected to Vercel — pushes to `main` trigger automatic de
 
 ## Service worker
 
-`sw.js` cache name is currently `tt-v5`. Bump it (`tt-v6`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+`sw.js` cache name is currently `tt-v7`. Bump it (`tt-v8`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
 
 ---
 
@@ -224,4 +269,6 @@ The GitHub repo is connected to Vercel — pushes to `main` trigger automatic de
 
 - Features discussed but not yet built:
   - Holiday mode — grey out a day
-  - Subject notes — tap cell to add localStorage note
+  - Cloud sync for journal / subject notes (needs user accounts)
+  - Web push notifications (real OS push)
+  - Calendar (.ics) export
