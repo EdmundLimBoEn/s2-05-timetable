@@ -25,10 +25,11 @@ export async function getData() {
   }
 }
 
-export async function setData(timetable, exams, username) {
+export async function setData(timetable, exams, announcements, username) {
   const data = {
     timetable,
     exams,
+    announcements: announcements ?? [],
     updatedAt: new Date().toISOString(),
     updatedBy: username
   }

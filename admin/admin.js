@@ -498,7 +498,7 @@ document.getElementById('addExamBtn').addEventListener('click', () => {
   renderExams()
 })
 document.getElementById('saveAnncsBtn').addEventListener('click', saveAnnouncements)
-document.getElementById('addAnncBtn').addEventListener('click', () => {
+document.getElementById('addAnncBtn').addEventListener('click', async () => {
   const title = document.getElementById('anncTitle').value.trim()
   if (!title) { showToast('Title is required', 'error'); return }
   const body     = document.getElementById('anncBody').value.trim()
@@ -507,6 +507,7 @@ document.getElementById('addAnncBtn').addEventListener('click', () => {
   document.getElementById('anncTitle').value = ''
   document.getElementById('anncBody').value  = ''
   renderAnnouncements()
+  await saveAnnouncements()
 })
 
 // ── Helpers ───────────────────────────────────────────────────
