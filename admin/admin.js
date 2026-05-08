@@ -290,6 +290,7 @@ async function saveTimetable() {
   btn.disabled = true
   status.textContent = 'Saving...'
   status.className = 'save-status'
+  showSaveBar('saving')
 
   const otherWeek = activeWeek === 'odd' ? 'even' : 'odd'
   const payload = buildPayload({
@@ -306,10 +307,12 @@ async function saveTimetable() {
     applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
+    showSaveBar('saved')
     showToast('Timetable saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
+    showSaveBar('error')
     showToast('Save failed: ' + err.message, 'error')
   } finally {
     validateAll()
@@ -323,6 +326,7 @@ async function saveExams() {
   btn.disabled = true
   status.textContent = 'Saving...'
   status.className = 'save-status'
+  showSaveBar('saving')
 
   try {
     const result = await apiFetch('/api/save', {
@@ -332,10 +336,12 @@ async function saveExams() {
     applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
+    showSaveBar('saved')
     showToast('Exams saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
+    showSaveBar('error')
     showToast('Save failed: ' + err.message, 'error')
   } finally {
     btn.disabled = false
@@ -404,14 +410,16 @@ function renderAnnouncements() {
 }
 
 async function saveAnnouncements() {
+  showSaveBar('saving')
   try {
     const result = await apiFetch('/api/save', {
       method: 'POST',
       body: JSON.stringify(buildPayload({ announcements: editingData.announcements }))
     })
     applySaveResult(result)
-    showToast('Announcements saved ✓', 'success')
+    showSaveBar('saved')
   } catch (err) {
+    showSaveBar('error')
     showToast('Save failed: ' + err.message, 'error')
   }
 }
@@ -511,6 +519,25 @@ function renderLastSaved(data) {
     el.textContent = `Last saved by ${data.updatedBy} · ${d.toLocaleString('en-SG')}`
   } else {
     el.textContent = 'Using default data — no saves yet.'
+  }
+}
+
+let _saveBarTimer = null
+function showSaveBar(state) {
+  const bar  = document.getElementById('saveBar')
+  const text = document.getElementById('saveBarText')
+  if (!bar) return
+  clearTimeout(_saveBarTimer)
+  bar.style.display = 'block'
+  bar.className = 'save-bar-indicator ' + state
+  if (state === 'saving') {
+    text.textContent = 'SAVING...'
+  } else if (state === 'saved') {
+    text.textContent = 'SAVED'
+    _saveBarTimer = setTimeout(() => { bar.style.display = 'none' }, 3000)
+  } else {
+    text.textContent = 'SAVE FAILED'
+    _saveBarTimer = setTimeout(() => { bar.style.display = 'none' }, 4000)
   }
 }
 

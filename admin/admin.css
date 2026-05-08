@@ -493,5 +493,25 @@ html, body {
   padding: 12px 0 8px;
 }
 
+/* ── Save indicator bar ──────────────────────────────────────── */
+.save-bar-indicator {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 7px 20px;
+  background: rgba(8,8,8,0.96);
+  border-top: 2px solid #81c784;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: #81c784;
+  text-align: center;
+  z-index: 300;
+  transition: opacity .3s;
+}
+.save-bar-indicator.saving { border-top-color: #ffb700; color: #ffb700; }
+.save-bar-indicator.error  { border-top-color: var(--red); color: var(--red); }
+
 /* ── Hidden util ─────────────────────────────────────────────── */
 .hidden { display: none !important; }
