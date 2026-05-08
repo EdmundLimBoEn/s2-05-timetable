@@ -46,6 +46,37 @@ const TERMS_2026 = [
   { term: 4, start: '2026-09-14' },
 ]
 
+const SCHOOL_HOLIDAYS_2026 = [
+  { label: 'TERM BREAK',    start: '2026-03-16', end: '2026-03-20' },
+  { label: 'MID-YR HOLS',  start: '2026-06-01', end: '2026-06-26' },
+  { label: 'SEPT BREAK',   start: '2026-09-07', end: '2026-09-11' },
+  { label: 'YEAR-END HOLS',start: '2026-11-23', end: '2026-12-31' },
+]
+
+function isHoliday(date) {
+  const d = date.toISOString().slice(0, 10)
+  return SCHOOL_HOLIDAYS_2026.find(h => d >= h.start && d <= h.end) || null
+}
+
+function getNextSchoolDay(from = new Date()) {
+  const d = new Date(from)
+  for (let i = 0; i < 14; i++) {
+    d.setDate(d.getDate() + 1)
+    if (d.getDay() >= 1 && d.getDay() <= 5 && !isHoliday(d)) return d
+  }
+  return null
+}
+
+function calcDaysToBreak() {
+  const today = new Date().toISOString().slice(0, 10)
+  const next  = SCHOOL_HOLIDAYS_2026
+    .filter(h => h.start > today)
+    .sort((a, b) => a.start.localeCompare(b.start))[0]
+  if (!next) return null
+  const days = Math.ceil((new Date(next.start) - Date.now()) / 86_400_000)
+  return { label: next.label, days }
+}
+
 // CSS variable keys → default hex colours
 const THEME_VARS = {
   bg:       '#080808',
@@ -81,7 +112,7 @@ const THEME_LABELS = {
   'c-ict':  'ICT',
 }
 
-const TIMETABLE = {
+let TIMETABLE = {
   odd: [
     // Mon: 3 blank, 2 ADMT, 3 S&W, 2 break, 2 math, 3 science, 3 english, 3 CCE
     [
@@ -205,6 +236,20 @@ let eveNotifEnabled    = false
 let eveNotifMins       = 19 * 60 + 30
 let eveNotifTimeout    = null
 
+let absentDays            = new Set(JSON.parse(localStorage.getItem('absentDays') || '[]'))
+let currentNoteKey        = null
+let deferredInstallPrompt = null
+let touchStartX = null, touchStartY = null, touchStartScrollLeft = null
+
+// Hardcoded exam dates — these are fallback defaults; live data comes from /api/data
+let EXAMS = [
+  { label: 'T2 CA · MATH', date: '2026-05-12' },
+  { label: 'T2 CA · SCI',  date: '2026-05-13' },
+  { label: 'T2 CA · EL',   date: '2026-05-15' },
+  { label: 'T2 CA · HUM',  date: '2026-05-19' },
+  { label: 'T2 CA · CL',   date: '2026-05-20' },
+]
+
 // ── DOM refs ───────────────────────────────────────────────────
 const wrap = document.getElementById('tableWrap')
 const tl   = document.getElementById('tl')
@@ -303,6 +348,211 @@ function firstRealBlock(schedule) {
   return null
 }
 
+// ── B1: Auto-scroll to current time ───────────────────────────
+function scrollToNow() {
+  const nm = getEffectiveMins()
+  if (getEffectiveDow() < 1 || getEffectiveDow() > 5) return
+  if (nm < ALL_MINS[0] || nm > END_MIN) return
+  const cols = colPositions()
+  if (!cols) return
+  let xPos = null
+  for (const c of cols) {
+    if (nm >= c.s && nm < c.e) {
+      xPos = c.l + (nm - c.s) / (c.e - c.s) * (c.r - c.l)
+      break
+    }
+  }
+  if (xPos === null && nm >= cols[cols.length - 1].s) xPos = cols[cols.length - 1].r
+  if (xPos !== null) wrap.scrollTo({ left: Math.max(0, xPos - wrap.clientWidth / 2), behavior: 'smooth' })
+}
+
+// ── B2: Last real class end time ───────────────────────────────
+function lastClassEndMin(day) {
+  let min = ALL_MINS[0], lastEnd = null
+  for (const b of day) {
+    if (b.style !== 'empty' && b.style !== 'brk') lastEnd = min + b.span * 20
+    min += b.span * 20
+  }
+  return lastEnd
+}
+
+// ── B8: Exam countdown ─────────────────────────────────────────
+function checkExams() {
+  const bar = document.getElementById('examBar')
+  const txt = document.getElementById('examText')
+  if (!bar || !txt) return
+  const now = Date.now()
+  const upcoming = EXAMS
+    .map(e => ({ ...e, ms: new Date(e.date).getTime() }))
+    .filter(e => e.ms >= now && e.ms - now <= 7 * 24 * 60 * 60 * 1000)
+    .sort((a, b) => a.ms - b.ms)
+  if (!upcoming.length) { bar.style.display = 'none'; return }
+  const next = upcoming[0]
+  const days = Math.max(0, Math.ceil((next.ms - now) / (24 * 60 * 60 * 1000)))
+  const extra = upcoming.length > 1 ? ` + ${upcoming.length - 1} MORE` : ''
+  txt.textContent = `${next.label} · ${days === 0 ? 'TODAY' : `IN ${days} ${days === 1 ? 'DAY' : 'DAYS'}`}${extra}`
+  bar.style.display = 'flex'
+}
+
+// ── B11: Bring-today bar ───────────────────────────────────────
+function updateBringBar() {
+  const bar  = document.getElementById('bringBar')
+  const subj = document.getElementById('bringSubjects')
+  if (!bar || !subj) return
+  const dow = getEffectiveDow()
+  if (dow < 1 || dow > 5) { bar.style.display = 'none'; return }
+  const day  = TIMETABLE[week][dow - 1]
+  const uniq = [...new Set(day.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => ABBREV[b.style]))]
+  subj.textContent = uniq.join(' · ')
+  bar.style.display = 'flex'
+}
+
+// ── B12: Offline indicator ─────────────────────────────────────
+function updateOnlineStatus() {
+  const badge = document.getElementById('offlineBadge')
+  if (badge) badge.style.display = navigator.onLine ? 'none' : 'inline-block'
+}
+
+// ── B14: Weekly subject stats ──────────────────────────────────
+function buildStats() {
+  const grid = document.getElementById('statsGrid')
+  if (!grid) return
+  const counts = {}
+  TIMETABLE[week].forEach(day => {
+    day.forEach(b => {
+      if (b.style !== 'empty' && b.style !== 'brk') counts[b.style] = (counts[b.style] || 0) + 1
+    })
+  })
+  grid.innerHTML = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `<span class="stats-chip" style="border-color:var(--c-${k});color:var(--c-${k})">${ABBREV[k]} ×${n}</span>`)
+    .join('')
+}
+
+// ── B15: Absent day marker ─────────────────────────────────────
+function applyAbsentDays() {
+  document.querySelectorAll('.tt-table tbody tr').forEach((row, di) => {
+    row.classList.toggle('day-absent', absentDays.has(di))
+  })
+}
+
+// ── B7: Note modal ─────────────────────────────────────────────
+function openNoteModal(cellId) {
+  const noteKey = 'note-' + cellId.slice(2)   // 'c-odd-0-2' → 'note-odd-0-2'
+  currentNoteKey = noteKey
+  const cell     = document.getElementById(cellId)
+  const subjText = cell?.querySelector('.subj')?.textContent || 'CELL'
+  document.getElementById('noteModalTitle').textContent = subjText + ' · NOTE'
+  document.getElementById('noteInput').value = localStorage.getItem(noteKey) || ''
+  document.getElementById('noteOverlay').style.display = 'block'
+  document.getElementById('noteModal').style.display   = 'block'
+  document.getElementById('noteInput').focus()
+}
+
+function closeNoteModal() {
+  currentNoteKey = null
+  document.getElementById('noteOverlay').style.display = 'none'
+  document.getElementById('noteModal').style.display   = 'none'
+}
+
+function saveNote() {
+  if (!currentNoteKey) return
+  const val    = document.getElementById('noteInput').value.trim()
+  const cellId = 'c-' + currentNoteKey.slice(5)   // 'note-odd-0-2' → 'c-odd-0-2'
+  if (val) localStorage.setItem(currentNoteKey, val)
+  else localStorage.removeItem(currentNoteKey)
+  document.getElementById(cellId)?.classList.toggle('has-note', !!val)
+  closeNoteModal()
+}
+
+function clearNote() {
+  if (!currentNoteKey) return
+  localStorage.removeItem(currentNoteKey)
+  const cellId = 'c-' + currentNoteKey.slice(5)
+  document.getElementById(cellId)?.classList.remove('has-note')
+  closeNoteModal()
+}
+
+// ── Homework tracker ───────────────────────────────────────────
+function loadHw() { return JSON.parse(localStorage.getItem('hw-v1') || '{}') }
+function saveHw(d) { localStorage.setItem('hw-v1', JSON.stringify(d)) }
+
+function getSubjectList() {
+  const s = new Set()
+  for (const wk of ['odd', 'even'])
+    for (const day of TIMETABLE[wk])
+      for (const b of day)
+        if (b.style !== 'empty' && b.style !== 'brk') s.add(b.style)
+  return [...s]
+}
+
+function updateHwBadge() {
+  const hw      = loadHw()
+  const pending = Object.values(hw).flat().filter(t => !t.done).length
+  const btn     = document.getElementById('btnTheme')
+  if (!btn) return
+  btn.classList.toggle('has-hw', pending > 0)
+  btn.dataset.hwCount = pending > 0 ? String(pending) : ''
+}
+
+function buildHwSection() {
+  const el = document.getElementById('hwSection')
+  if (!el) return
+  const hw   = loadHw()
+  const subs = getSubjectList()
+  el.innerHTML = subs.map(key => {
+    const items = hw[key] || []
+    const label = ABBREV[key] || key.toUpperCase()
+    const rows  = items.map((t, i) => `
+      <label class="hw-item${t.done ? ' hw-done' : ''}">
+        <input type="checkbox" data-key="${key}" data-idx="${i}"${t.done ? ' checked' : ''}>
+        <span class="hw-text">${t.text.replace(/</g,'&lt;')}</span>
+        <button class="hw-del" data-key="${key}" data-idx="${i}">&#x2715;</button>
+      </label>`).join('')
+    return `<div class="hw-subj" style="border-left-color:var(--c-${key})">
+      <div class="hw-subj-hd">${label}</div>
+      ${rows}
+      <div class="hw-add-row">
+        <input class="hw-input" data-key="${key}" placeholder="add task…" maxlength="60" autocomplete="off">
+        <button class="hw-add-btn" data-key="${key}">+</button>
+      </div>
+    </div>`
+  }).join('')
+
+  el.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', e => {
+    const data = loadHw()
+    const { key, idx } = e.target.dataset
+    data[key][parseInt(idx)].done = e.target.checked
+    saveHw(data); buildHwSection(); updateHwBadge()
+  }))
+  el.querySelectorAll('.hw-del').forEach(btn => btn.addEventListener('click', e => {
+    const data = loadHw()
+    const { key, idx } = e.target.dataset
+    data[key].splice(parseInt(idx), 1)
+    saveHw(data); buildHwSection(); updateHwBadge()
+  }))
+  el.querySelectorAll('.hw-add-btn').forEach(btn => btn.addEventListener('click', e => {
+    const key = e.target.dataset.key
+    const inp = el.querySelector(`.hw-input[data-key="${key}"]`)
+    const text = inp.value.trim()
+    if (!text) return
+    const data = loadHw()
+    ;(data[key] = data[key] || []).push({ text, done: false })
+    saveHw(data); buildHwSection(); updateHwBadge()
+    // keep focus in the input for rapid entry
+    el.querySelector(`.hw-input[data-key="${key}"]`)?.focus()
+  }))
+  el.querySelectorAll('.hw-input').forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') el.querySelector(`.hw-add-btn[data-key="${inp.dataset.key}"]`).click()
+  }))
+}
+
+// ── B10: PWA install prompt ────────────────────────────────────
+function updateInstallBtn() {
+  const btn = document.getElementById('installBtn')
+  if (btn) btn.style.display = deferredInstallPrompt ? '' : 'none'
+}
+
 // ── URL hash sync ──────────────────────────────────────────────
 function updateHash() {
   const params = new URLSearchParams()
@@ -349,15 +599,24 @@ function buildTable(wk) {
   TIMETABLE[wk].forEach((blocks, di) => {
     const isToday = (di + 1) === getEffectiveDow()
     html += `<tr${isToday ? ' class="today-row"' : ''}>`
-    html += `<td class="td-day">${DAY_LABELS[di]}</td>`
+    html += `<td class="td-day" title="Tap to mark absent">${DAY_LABELS[di]}</td>`
 
     let rem = N_COLS
     blocks.forEach((b, bi) => {
       if (rem <= 0) return
-      const sp = Math.min(b.span, rem)
+      const sp     = Math.min(b.span, rem)
       rem -= sp
-      const inner = ABBREV[b.style] ?? ''
-      html += `<td colspan="${sp}"><div class="cell ${b.style}" id="c-${wk}-${di}-${bi}"><span class="subj">${inner}</span></div></td>`
+      const inner  = ABBREV[b.style] ?? ''
+      const isReal = b.style !== 'empty' && b.style !== 'brk'
+      const durMins = b.span * 20
+      const durStr  = isReal
+        ? (durMins >= 60
+            ? `${Math.floor(durMins / 60)} HR${durMins % 60 ? ' ' + durMins % 60 + ' MIN' : ''}`
+            : `${durMins} MIN`)
+        : ''
+      const noteKey   = `note-${wk}-${di}-${bi}`
+      const noteClass = localStorage.getItem(noteKey) ? ' has-note' : ''
+      html += `<td colspan="${sp}"><div class="cell ${b.style}${noteClass}" id="c-${wk}-${di}-${bi}"><span class="subj">${inner}</span>${durStr ? `<span class="dur">${durStr}</span>` : ''}${isReal ? '<div class="period-bar"></div>' : ''}</div></td>`
     })
 
     html += '</tr>'
@@ -378,6 +637,8 @@ function rebuild() {
   wrap.querySelectorAll('table').forEach(t => t.remove())
   wrap.insertAdjacentHTML('afterbegin', buildTable('odd') + buildTable('even'))
   showActive()
+  applyAbsentDays()
+  updateBringBar()
   tick()
 }
 
@@ -399,7 +660,9 @@ function setWeek(w) {
   evenBtn.setAttribute('aria-pressed', String(w === 'even'))
   movePill('pillWeek', document.getElementById(w === 'odd' ? 'btnOdd' : 'btnEven'))
   showActive()
+  updateBringBar()
   tick()
+  scrollToNow()
   updateHash()
   scheduleClassNotifs()
 }
@@ -444,19 +707,33 @@ function tick() {
   const inHours = nm >= ALL_MINS[0] && nm <= END_MIN
 
   document.querySelectorAll('.cell.now').forEach(c => c.classList.remove('now'))
+  document.querySelectorAll('.period-bar').forEach(b => { b.style.width = '0' })
 
   const upcomingBar = document.getElementById('upcomingBar')
 
-  if (!weekday || !inHours) {
+  const todayHol = !demoMode ? isHoliday(new Date()) : null
+
+  if (!weekday || !inHours || todayHol) {
     tl.style.display     = 'none'
     nowBar.style.display = 'none'
     if (nextBar) nextBar.style.display = 'none'
 
     if (upcomingBar) {
       const dow = getEffectiveDow()
-      const isBeforeSchool = dow >= 1 && dow <= 5 && nm < ALL_MINS[0]
+      const isBeforeSchool = !todayHol && dow >= 1 && dow <= 5 && nm < ALL_MINS[0]
 
-      if (isBeforeSchool) {
+      if (todayHol) {
+        const nextDay  = getNextSchoolDay()
+        const endDate  = new Date(todayHol.end)
+        endDate.setDate(endDate.getDate() + 1) // day after last holiday day = first back
+        const daysLeft = Math.max(0, Math.ceil((endDate - Date.now()) / 86_400_000))
+        document.getElementById('upcomingLabel').textContent = todayHol.label
+        document.getElementById('upcomingDay').textContent   =
+          nextDay ? 'BACK ' + DAY_LABELS[nextDay.getDay() - 1].toUpperCase() : '—'
+        const detail = document.getElementById('upcomingDetail')
+        detail.textContent = daysLeft === 1 ? 'LAST DAY' : `${daysLeft} DAYS LEFT`
+        detail.classList.remove('has-sw')
+      } else if (isBeforeSchool) {
         const sched  = TIMETABLE[week][dow - 1]
         const first  = firstRealBlock(sched)
         const minsTo = first ? first.startMin - nm : null
@@ -469,23 +746,21 @@ function tick() {
           : ''
         detail.classList.toggle('has-sw', hasSW)
       } else {
-        const d = new Date()
-        for (let i = 1; i <= 7; i++) {
-          d.setDate(d.getDate() + 1)
-          if (d.getDay() >= 1 && d.getDay() <= 5) break
+        const d = getNextSchoolDay()
+        if (d) {
+          const nextDow  = d.getDay()
+          const nextWk   = weekForDate(d)
+          const sched    = TIMETABLE[nextWk][nextDow - 1]
+          const hasSW    = sched.some(b => b.style === 'sw')
+          const subjList = [...new Set(
+            sched.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => ABBREV[b.style])
+          )]
+          const detail = document.getElementById('upcomingDetail')
+          document.getElementById('upcomingLabel').textContent = 'NEXT'
+          document.getElementById('upcomingDay').textContent   = DAY_LABELS[nextDow - 1].toUpperCase() + ' · ' + nextWk.toUpperCase()
+          detail.textContent = subjList.join(' · ') + (hasSW ? ' · ⚡ S&W' : '')
+          detail.classList.toggle('has-sw', hasSW)
         }
-        const nextDow = d.getDay()
-        const nextWk  = weekForDate(d)
-        const sched   = TIMETABLE[nextWk][nextDow - 1]
-        const hasSW   = sched.some(b => b.style === 'sw')
-        const subjList = [...new Set(
-          sched.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => ABBREV[b.style])
-        )]
-        const detail  = document.getElementById('upcomingDetail')
-        document.getElementById('upcomingLabel').textContent = 'NEXT'
-        document.getElementById('upcomingDay').textContent   = DAY_LABELS[nextDow - 1].toUpperCase() + ' · ' + nextWk.toUpperCase()
-        detail.textContent = subjList.join(' · ') + (hasSW ? ' · ⚡ S&W' : '')
-        detail.classList.toggle('has-sw', hasSW)
       }
       upcomingBar.style.display = 'flex'
     }
@@ -539,11 +814,23 @@ function tick() {
         ? ALL_MINS[activeBlock.endSlot]
         : END_MIN
       const minsLeft = blockEndMin - nm
+      const blockStartMin = ALL_MINS[activeBlock.startSlot]
+      const progress = Math.min(1, (nm - blockStartMin) / (blockEndMin - blockStartMin))
+      document.querySelector(`#c-${week}-${di}-${activeBlock.bi} .period-bar`)
+        ?.style.setProperty('width', `${progress * 100}%`)
       nowBar.style.display  = 'flex'
       nowSubj.textContent   = activeBlock.b.label
       if (nowCountdown) nowCountdown.textContent = (minsLeft < 1 ? '< 1' : minsLeft) + ' MIN'
+      // B2: school-ends label
+      const nowEndsEl = document.getElementById('nowEnds')
+      if (nowEndsEl && day) {
+        const ends = lastClassEndMin(day)
+        nowEndsEl.textContent = ends ? 'ENDS ' + fmtMins(ends) : ''
+      }
     } else {
       nowBar.style.display = 'none'
+      const nowEndsEl = document.getElementById('nowEnds')
+      if (nowEndsEl) nowEndsEl.textContent = ''
     }
 
     // Next bar — show whenever there's an upcoming class
@@ -631,6 +918,9 @@ function buildSettingsPanel() {
 
   applyCompact()
   updateNotifBtns()
+  buildStats()
+  buildHwSection()
+  updateInstallBtn()
 }
 
 function openTheme() {
@@ -650,7 +940,17 @@ document.getElementById('themeClose').addEventListener('click', closeTheme)
 document.getElementById('themeOverlay').addEventListener('click', closeTheme)
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeTheme()
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+  if (e.key === 'Escape') {
+    if (document.getElementById('noteModal').style.display !== 'none') { closeNoteModal(); return }
+    closeTheme()
+    return
+  }
+  if (document.getElementById('noteModal').style.display !== 'none') return
+  if (document.getElementById('themePanel').classList.contains('open')) return
+  // B13: keyboard shortcuts — left/right = switch week, s = settings
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') setWeek(week === 'odd' ? 'even' : 'odd')
+  else if (e.key === 's' || e.key === 'S') openTheme()
 })
 
 document.getElementById('themeCopyLink').addEventListener('click', () => {
@@ -731,6 +1031,7 @@ document.getElementById('demoDayBtns').addEventListener('click', e => {
   rebuild()
   tick()
   updateDemoBanner()
+  updateBringBar()
 })
 
 // Time input
@@ -884,7 +1185,7 @@ document.getElementById('notifTime')?.addEventListener('input', e => {
 })
 
 // ── Init ───────────────────────────────────────────────────────
-setTimeout(() => {
+setTimeout(async () => {
   loadFromHash()
   applyTheme(currentTheme)
   applyCompact()
@@ -892,6 +1193,13 @@ setTimeout(() => {
   const tw = calcTermWeek()
   const termPillEl = document.getElementById('termPill')
   if (termPillEl) termPillEl.textContent = tw ? `T${tw.term} W${tw.week}` : ''
+
+  const bp = calcDaysToBreak()
+  const breakPillEl = document.getElementById('breakPill')
+  if (breakPillEl && bp && bp.days > 0 && bp.days <= 30) {
+    breakPillEl.textContent = `${bp.days}D TO BREAK`
+    breakPillEl.style.display = ''
+  }
 
   classNotifEnabled = !!localStorage.getItem('classNotif') && 'Notification' in window && Notification.permission === 'granted'
   eveNotifEnabled   = !!localStorage.getItem('eveNotif')   && 'Notification' in window && Notification.permission === 'granted'
@@ -908,8 +1216,106 @@ setTimeout(() => {
   inactiveBtn.setAttribute('aria-pressed', 'false')
   movePill('pillWeek', activeBtn)
 
+  // Render immediately with fallback (hardcoded) data
   rebuild()
+  checkExams()
+
+  // Fetch live data; re-render only when updatedAt changes
+  let lastUpdatedAt = null
+  async function refreshData() {
+    try {
+      const res = await fetch('/api/data', { cache: 'no-store' })
+      if (!res.ok) return
+      const remote = await res.json()
+      if (remote.updatedAt === lastUpdatedAt) return   // nothing changed
+      lastUpdatedAt = remote.updatedAt
+      if (remote.timetable) TIMETABLE = remote.timetable
+      if (Array.isArray(remote.exams)) EXAMS = remote.exams
+      rebuild()
+      checkExams()
+    } catch {
+      // Offline or server unavailable — keep current data
+    }
+  }
+
+  await refreshData()
+  setInterval(refreshData, 10_000)              // poll every 10 s
+  setTimeout(() => location.reload(), 3_600_000) // hard reload every hour
+
+  scrollToNow()
+  updateOnlineStatus()
+  updateHwBadge()
 }, 50)
+
+// ── B3: Touch swipe to switch week ────────────────────────────
+wrap.addEventListener('touchstart', e => {
+  touchStartX           = e.touches[0].clientX
+  touchStartY           = e.touches[0].clientY
+  touchStartScrollLeft  = wrap.scrollLeft
+}, { passive: true })
+
+wrap.addEventListener('touchend', e => {
+  if (touchStartX === null) return
+  const dx              = e.changedTouches[0].clientX - touchStartX
+  const dy              = Math.abs(e.changedTouches[0].clientY - touchStartY)
+  const didScroll       = Math.abs(wrap.scrollLeft - touchStartScrollLeft) > 8
+  if (!didScroll && Math.abs(dx) > 55 && Math.abs(dx) > dy * 2) setWeek(week === 'odd' ? 'even' : 'odd')
+  touchStartX = null
+}, { passive: true })
+
+// ── B7: Note & B15: Absent day — wrap click delegation ────────
+wrap.addEventListener('click', e => {
+  const dayTd = e.target.closest('.td-day')
+  if (dayTd) {
+    const row   = dayTd.closest('tr')
+    const tbody = row.closest('tbody')
+    if (!tbody) return
+    const di = Array.from(tbody.querySelectorAll('tr')).indexOf(row)
+    if (absentDays.has(di)) absentDays.delete(di)
+    else absentDays.add(di)
+    localStorage.setItem('absentDays', JSON.stringify([...absentDays]))
+    applyAbsentDays()
+    return
+  }
+  const cell = e.target.closest('.cell:not(.empty):not(.brk)')
+  if (!cell || !cell.id.startsWith('c-')) return
+  openNoteModal(cell.id)
+})
+
+// ── B7: Note modal buttons ─────────────────────────────────────
+document.getElementById('noteSave')?.addEventListener('click', saveNote)
+document.getElementById('noteClear')?.addEventListener('click', clearNote)
+document.getElementById('noteModalClose')?.addEventListener('click', closeNoteModal)
+document.getElementById('noteOverlay')?.addEventListener('click', closeNoteModal)
+document.getElementById('noteInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveNote()
+  if (e.key === 'Escape') closeNoteModal()
+})
+
+// ── B9: Print ──────────────────────────────────────────────────
+document.getElementById('printBtn')?.addEventListener('click', () => {
+  closeTheme()
+  setTimeout(() => window.print(), 300)
+})
+
+// ── B10: PWA install ───────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault()
+  deferredInstallPrompt = e
+  updateInstallBtn()
+})
+
+document.getElementById('installBtn')?.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return
+  deferredInstallPrompt.prompt()
+  const { outcome } = await deferredInstallPrompt.userChoice
+  if (outcome === 'accepted') deferredInstallPrompt = null
+  updateInstallBtn()
+})
+
+// ── B12: Online/offline ────────────────────────────────────────
+window.addEventListener('online',  updateOnlineStatus)
+window.addEventListener('offline', updateOnlineStatus)
 
 setInterval(tick, 60_000)
 wrap.addEventListener('scroll', tick)

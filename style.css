@@ -354,6 +354,18 @@ tr.today-row td .cell:not(.empty) {
 }
 .cell.now .subj { color: #fff !important; }
 
+/* ── Period progress bar ────────────────────────────────────── */
+.cell .period-bar {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--red);
+  transition: width 0.8s linear;
+  border-radius: 0 1px 1px 0;
+  pointer-events: none;
+}
+
 /* ── Time line ──────────────────────────────────────────────── */
 .time-line {
   position: absolute;
@@ -806,3 +818,303 @@ body.compact .cell .subj { font-size: 0.95rem; }
 }
 
 .notif-btn { flex: 0 0 auto; min-width: 90px; }
+
+/* ── B2: School-ends label ───────────────────────────────────── */
+.now-ends {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.1);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* ── B4: Duration label in cells ─────────────────────────────── */
+.cell .dur {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.5rem;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 0.03em;
+  display: block;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+/* ── B7: Note dot ────────────────────────────────────────────── */
+.cell.has-note::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,59,59,0.75);
+  box-shadow: 0 0 4px rgba(255,59,59,0.4);
+}
+
+/* ── B7: Note modal ──────────────────────────────────────────── */
+.note-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+}
+.note-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #0e0e0e;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 20px;
+  width: 90%;
+  max-width: 340px;
+  z-index: 201;
+}
+.note-modal-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.note-modal-title {
+  font-family: 'VT323', monospace;
+  font-size: 1.35rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+}
+.note-input {
+  display: block;
+  width: 100%;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: rgba(255,255,255,0.8);
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  letter-spacing: 0.04em;
+}
+.note-input:focus {
+  outline: 1px solid rgba(255,59,59,0.35);
+  border-color: rgba(255,59,59,0.25);
+}
+.note-actions { display: flex; gap: 8px; }
+
+/* ── B8: Exam countdown bar ──────────────────────────────────── */
+.exam-bar {
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: rgba(255,183,77,0.05);
+  border-bottom: 1px solid rgba(255,183,77,0.12);
+  flex-shrink: 0;
+}
+.exam-icon { font-size: 0.9rem; flex-shrink: 0; }
+.exam-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(255,183,77,0.75);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── B9: Print mode ──────────────────────────────────────────── */
+@media print {
+  .scanlines, .topbar-right, .now-bar, .next-bar, .upcoming-bar,
+  .exam-bar, .bring-bar, .sw-update-bar, .demo-banner, .time-line,
+  .theme-overlay, .theme-panel, .note-overlay, .note-modal, .bottom,
+  .offlineBadge { display: none !important; }
+  .topbar { border-bottom: 1px solid #ccc; }
+  body { background: #fff; color: #000; min-height: unset; }
+  .tt-table.hidden { display: none !important; position: static; }
+  .td-day { background: #fff !important; color: #333 !important; }
+  .cell .subj { color: #111 !important; }
+  .cell { border-left-width: 3px; background: rgba(0,0,0,0.04) !important; }
+}
+
+/* ── B11: Bring-today bar ────────────────────────────────────── */
+.bring-bar {
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.bring-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.1);
+  letter-spacing: 0.15em;
+  flex-shrink: 0;
+}
+.bring-subjects {
+  font-family: 'VT323', monospace;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.28);
+  text-transform: uppercase;
+}
+
+/* ── B12: Offline badge ──────────────────────────────────────── */
+.offline-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(255,183,77,0.9);
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(255,183,77,0.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+/* ── B14: Stats grid ─────────────────────────────────────────── */
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 2px;
+}
+.stats-chip {
+  font-family: 'VT323', monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.02);
+}
+
+/* ── B15: Absent day ─────────────────────────────────────────── */
+tr.day-absent .td-day {
+  opacity: 0.25;
+  text-decoration: line-through;
+}
+tr.day-absent td .cell:not(.empty) {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+
+/* ── B16: SW update bar ──────────────────────────────────────── */
+.sw-update-bar {
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  background: rgba(79,195,247,0.05);
+  border-bottom: 1px solid rgba(79,195,247,0.14);
+  flex-shrink: 0;
+}
+.sw-update-bar span {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(79,195,247,0.75);
+  letter-spacing: 0.1em;
+}
+.sw-refresh-btn {
+  font-family: 'VT323', monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  padding: 2px 12px;
+  background: rgba(79,195,247,0.08);
+  border: 1px solid rgba(79,195,247,0.25);
+  border-radius: 5px;
+  color: rgba(79,195,247,0.85);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.sw-refresh-btn:hover { background: rgba(79,195,247,0.16); }
+
+/* ── Break pill ──────────────────────────────────────────────── */
+.break-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: rgba(255, 183, 77, 0.75);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 183, 77, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
+/* ── Homework tracker ────────────────────────────────────────── */
+#btnTheme { position: relative; }
+#btnTheme.has-hw::after {
+  content: attr(data-hw-count);
+  position: absolute; top: -4px; right: -4px;
+  background: var(--red); color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem; line-height: 1;
+  padding: 2px 4px; border-radius: 8px;
+  min-width: 14px; text-align: center;
+}
+
+.hw-subj {
+  border-left: 2px solid;
+  padding: 6px 0 6px 10px;
+  margin-bottom: 10px;
+}
+.hw-subj-hd {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  opacity: 0.5;
+  margin-bottom: 6px;
+}
+.hw-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.hw-item input[type=checkbox] { accent-color: var(--red); flex-shrink: 0; }
+.hw-text { flex: 1; font-size: 0.8rem; font-family: 'Space Mono', monospace; }
+.hw-done .hw-text { opacity: 0.35; text-decoration: line-through; }
+.hw-del {
+  background: none; border: none;
+  color: rgba(255,255,255,0.2);
+  cursor: pointer; font-size: 0.8rem;
+  padding: 0 4px;
+}
+.hw-del:hover { color: var(--red); }
+.hw-add-row { display: flex; gap: 6px; margin-top: 6px; }
+.hw-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--fg);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+}
+.hw-input:focus { border-color: rgba(255,255,255,0.25); }
+.hw-add-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--fg);
+  font-size: 1rem;
+  padding: 2px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.hw-add-btn:hover { background: rgba(255,255,255,0.12); }
+
+/* ── B17: Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .scanlines { display: none; }
+  .cursor    { animation: none; opacity: 1; }
+  .now-dot   { animation: none; }
+  .offline-badge { animation: none; }
+  .tog-pill, .toggle-track, .toggle-thumb { transition: none; }
+  .theme-panel, .theme-overlay { transition: none; }
+  .tt-table { transition: none; }
+}
