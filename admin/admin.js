@@ -30,7 +30,7 @@ const SUBJECT_KEYS = Object.keys(SUBJECT_DISPLAY)
 
 // ── State ─────────────────────────────────────────────────────
 let activeWeek = 'odd'
-let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [] }
+let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [], overrides: [] }
 let serverData  = null   // last confirmed saved state
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -48,6 +48,7 @@ async function init() {
     serverData  = data
     editingData = deepClone(data)
     editingData.announcements = editingData.announcements ?? []
+    editingData.overrides     = editingData.overrides     ?? []
     renderLastSaved(data)
   } catch {
     showToast('Could not load timetable data.', 'error')
@@ -57,6 +58,7 @@ async function init() {
   renderTimetable()
   renderExams()
   renderAnnouncements()
+  renderOverrides()
 }
 
 // ── Fetch helper ──────────────────────────────────────────────
@@ -270,15 +272,21 @@ function applySaveResult(result) {
   if (Array.isArray(result.exams)) {
     serverData = { ...serverData, exams: result.exams }
   }
+  if (Array.isArray(result.overrides)) {
+    serverData = { ...serverData, overrides: result.overrides }
+    editingData.overrides = result.overrides
+    renderOverrides()
+  }
   renderLastSaved(result)
 }
 
-function buildPayload(overrides = {}) {
+function buildPayload(patch = {}) {
   return {
     timetable:     serverData?.timetable     ?? editingData.timetable,
     exams:         serverData?.exams         ?? editingData.exams,
     announcements: serverData?.announcements ?? editingData.announcements,
-    ...overrides
+    overrides:     serverData?.overrides     ?? editingData.overrides,
+    ...patch
   }
 }
 
@@ -424,6 +432,133 @@ async function saveAnnouncements() {
   }
 }
 
+// ── Overrides renderer ────────────────────────────────────────
+function renderOverrides() {
+  const list = document.getElementById('ovrsList')
+  if (!list) return
+  const ovrs = editingData.overrides || []
+  list.innerHTML = ''
+
+  if (!ovrs.length) {
+    const empty = document.createElement('p')
+    empty.className = 'anncs-empty'
+    empty.textContent = 'No overrides. Use the form above to add one.'
+    list.appendChild(empty)
+    return
+  }
+
+  // Upcoming first, then past
+  const sorted = [...ovrs].sort((a, b) => a.date.localeCompare(b.date))
+  sorted.forEach(ovr => {
+    const idx  = editingData.overrides.indexOf(ovr)
+    const card = document.createElement('div')
+    card.className = 'ovr-card'
+
+    const body = document.createElement('div')
+    body.className = 'ovr-card-body'
+
+    const header = document.createElement('div')
+    header.className = 'ovr-card-header'
+    const typeClass = ovr.type === 'holiday' ? 'holiday' : 'custom'
+    header.innerHTML =
+      `<span class="ovr-type-pill ${typeClass}">${ovr.type.toUpperCase()}</span>` +
+      `<span class="ovr-card-date">${ovr.date}</span>` +
+      `<span class="ovr-card-label">${ovr.label}</span>`
+    body.appendChild(header)
+
+    // For custom overrides, show an inline block editor
+    if (ovr.type === 'custom') {
+      const blockList = document.createElement('div')
+      blockList.className = 'ovr-block-list'
+
+      const render = () => {
+        blockList.innerHTML = ''
+        const total = ovr.blocks.reduce((s, b) => s + (b.span || 0), 0)
+        const valid = total === 30
+        ovr.blocks.forEach((b, bi) => {
+          const row = document.createElement('div')
+          row.className = 'form-row'
+
+          const sel = document.createElement('select')
+          sel.className = 'subj-select'
+          SUBJECT_KEYS.forEach(key => {
+            const opt = document.createElement('option')
+            opt.value = key; opt.textContent = SUBJECT_DISPLAY[key]
+            if (key === b.style) opt.selected = true
+            sel.appendChild(opt)
+          })
+          sel.addEventListener('change', () => { b.style = sel.value; b.label = DEFAULT_LABELS[sel.value] || sel.value })
+
+          const spanWrap = document.createElement('div')
+          spanWrap.className = 'span-wrap'
+          spanWrap.innerHTML = '<span class="span-label-txt">SLOTS</span>'
+          const spanInp = document.createElement('input')
+          spanInp.type = 'number'; spanInp.className = 'span-input'
+          spanInp.min = 1; spanInp.max = 30; spanInp.value = b.span
+          spanInp.addEventListener('input', () => { b.span = parseInt(spanInp.value) || 0; render() })
+          spanWrap.appendChild(spanInp)
+
+          const delBtn = document.createElement('button')
+          delBtn.className = 'btn danger small'; delBtn.textContent = '✕'
+          delBtn.addEventListener('click', () => { ovr.blocks.splice(bi, 1); render() })
+
+          row.appendChild(sel); row.appendChild(spanWrap); row.appendChild(delBtn)
+          blockList.appendChild(row)
+        })
+
+        const counter = document.createElement('div')
+        counter.className = 'ovr-span-counter' + (valid ? '' : ' invalid')
+        counter.textContent = `${total} / 30 slots`
+        const addRow = document.createElement('button')
+        addRow.className = 'row-add-btn'
+        addRow.textContent = '+ add block'
+        addRow.addEventListener('click', () => {
+          ovr.blocks.push({ label: DEFAULT_LABELS.empty, span: 1, style: 'empty' }); render()
+        })
+        const saveBtn = document.createElement('button')
+        saveBtn.className = 'btn small' + (valid ? '' : ' disabled-look')
+        saveBtn.textContent = 'SAVE CHANGES'
+        saveBtn.disabled = !valid
+        saveBtn.addEventListener('click', async () => { await saveOverrides() })
+        blockList.appendChild(counter)
+        blockList.appendChild(addRow)
+        blockList.appendChild(saveBtn)
+      }
+      render()
+      body.appendChild(blockList)
+    }
+
+    const delBtn = document.createElement('button')
+    delBtn.className = 'btn danger small'
+    delBtn.textContent = '✕'
+    delBtn.title = 'Delete override'
+    delBtn.addEventListener('click', async () => {
+      editingData.overrides.splice(idx, 1)
+      renderOverrides()
+      await saveOverrides()
+    })
+
+    card.appendChild(body)
+    card.appendChild(delBtn)
+    list.appendChild(card)
+  })
+}
+
+async function saveOverrides() {
+  showSaveBar('saving')
+  try {
+    const result = await apiFetch('/api/save', {
+      method: 'POST',
+      body: JSON.stringify(buildPayload({ overrides: editingData.overrides }))
+    })
+    applySaveResult(result)
+    showSaveBar('saved')
+  } catch (err) {
+    showSaveBar('error')
+    showToast('Save failed: ' + err.message, 'error')
+  }
+}
+
 // ── Login / Logout ────────────────────────────────────────────
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault()
@@ -445,12 +580,14 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     serverData  = data
     editingData = deepClone(data)
     editingData.announcements = editingData.announcements ?? []
+    editingData.overrides     = editingData.overrides     ?? []
     renderLastSaved(data)
     hide('loginSection')
     show('dashboard')
     renderTimetable()
     renderExams()
     renderAnnouncements()
+    renderOverrides()
   } catch (e) {
     err.textContent = e.message
     btn.disabled = false
@@ -473,6 +610,7 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     document.getElementById('tabTimetable').classList.toggle('hidden', name !== 'timetable')
     document.getElementById('tabExams').classList.toggle('hidden', name !== 'exams')
     document.getElementById('tabAnnouncements').classList.toggle('hidden', name !== 'announcements')
+    document.getElementById('tabOverrides').classList.toggle('hidden', name !== 'overrides')
   })
 })
 
@@ -493,6 +631,24 @@ document.getElementById('addExamBtn').addEventListener('click', () => {
   editingData.exams.push({ label: '', date: '' })
   renderExams()
 })
+document.getElementById('addOvrBtn').addEventListener('click', async () => {
+  const date  = document.getElementById('ovrDate').value
+  const type  = document.getElementById('ovrType').value
+  const label = document.getElementById('ovrLabel').value.trim()
+  if (!date)  { showToast('Date is required', 'error'); return }
+  if (!label) { showToast('Label is required', 'error'); return }
+  if (editingData.overrides.some(o => o.date === date)) {
+    showToast('An override already exists for that date', 'error'); return
+  }
+  const ovr = { date, type, label }
+  if (type === 'custom') ovr.blocks = [{ label: DEFAULT_LABELS.empty, span: 30, style: 'empty' }]
+  editingData.overrides.push(ovr)
+  document.getElementById('ovrDate').value  = ''
+  document.getElementById('ovrLabel').value = ''
+  renderOverrides()
+  await saveOverrides()
+})
+
 document.getElementById('addAnncBtn').addEventListener('click', async () => {
   const title = document.getElementById('anncTitle').value.trim()
   if (!title) { showToast('Title is required', 'error'); return }

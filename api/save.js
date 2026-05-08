@@ -20,8 +20,10 @@ export default async function handler(req, res) {
     createdBy: a.createdBy || username,
   }))
 
+  const overrides = body.overrides ?? []
+
   try {
-    const data = await setData(body.timetable, body.exams, announcements, username)
+    const data = await setData(body.timetable, body.exams, announcements, overrides, username)
     // Return the full saved state so the client can update without a second GET
     res.status(200).json({
       ok:            true,
@@ -29,6 +31,7 @@ export default async function handler(req, res) {
       updatedBy:     data.updatedBy,
       announcements: data.announcements,
       exams:         data.exams,
+      overrides:     data.overrides,
     })
   } catch (err) {
     console.error('[/api/save]', err)

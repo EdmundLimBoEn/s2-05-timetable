@@ -40,6 +40,7 @@
       <button class="admin-tab active" data-tab="timetable">TIMETABLE</button>
       <button class="admin-tab"        data-tab="exams">EXAMS</button>
       <button class="admin-tab"        data-tab="announcements">ANNCS</button>
+      <button class="admin-tab"        data-tab="overrides">OVERRIDES</button>
     </nav>
 
     <!-- Timetable tab -->
@@ -94,6 +95,28 @@
       </div>
 
       <div id="anncsList" style="margin-top:16px"></div>
+    </div>
+
+    <!-- Overrides tab -->
+    <div class="admin-content hidden" id="tabOverrides">
+      <div style="height:16px"></div>
+      <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:16px">
+        SCHEDULE OVERRIDES · mark a date as holiday or a custom one-off day
+      </p>
+
+      <div class="ovr-form">
+        <div class="ovr-form-row">
+          <input class="exam-date-input" id="ovrDate" type="date">
+          <select class="annc-cat-select" id="ovrType">
+            <option value="holiday">HOLIDAY</option>
+            <option value="custom">CUSTOM DAY</option>
+          </select>
+          <input class="exam-label-input" id="ovrLabel" type="text" placeholder="Label (e.g. Vesak Day)" maxlength="80">
+        </div>
+        <button class="btn primary large" id="addOvrBtn">+ ADD OVERRIDE</button>
+      </div>
+
+      <div id="ovrsList" style="margin-top:16px"></div>
     </div>
   </div>
 

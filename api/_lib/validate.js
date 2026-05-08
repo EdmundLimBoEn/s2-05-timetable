@@ -1,5 +1,5 @@
 const VALID_STYLES = new Set([
-  'el','math','sci','hum','mt','sw','cce','hsl','hbl','cm','admt','ict','brk','empty'
+  'el','math','sci','hum','mt','sw','cce','hsl','hbl','cm','admt','ict','brk','empty','holiday'
 ])
 const WEEKS   = ['odd', 'even']
 const N_DAYS  = 5
@@ -11,7 +11,7 @@ export function validateData(body) {
   const errors = []
   if (!body || typeof body !== 'object') return ['Invalid payload']
 
-  const { timetable, exams, announcements } = body
+  const { timetable, exams, announcements, overrides } = body
 
   // Validate timetable
   if (!timetable || typeof timetable !== 'object') {
@@ -81,6 +81,39 @@ export function validateData(body) {
         }
         if (!VALID_CATEGORIES.has(a.category)) {
           errors.push(`announcements[${i}].category must be one of: ${[...VALID_CATEGORIES].join(', ')}`)
+        }
+      })
+    }
+  }
+
+  // Validate overrides (optional field — absent means no change)
+  if (overrides !== undefined) {
+    if (!Array.isArray(overrides)) {
+      errors.push('overrides must be an array')
+    } else {
+      const seen = new Set()
+      overrides.forEach((o, i) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(o.date))
+          errors.push(`overrides[${i}].date must be YYYY-MM-DD`)
+        if (seen.has(o.date))
+          errors.push(`overrides[${i}] duplicate date "${o.date}"`)
+        seen.add(o.date)
+        if (!['holiday', 'custom'].includes(o.type))
+          errors.push(`overrides[${i}].type must be holiday or custom`)
+        if (typeof o.label !== 'string' || !o.label.trim())
+          errors.push(`overrides[${i}].label required`)
+        if (o.type === 'custom') {
+          if (!Array.isArray(o.blocks)) {
+            errors.push(`overrides[${i}].blocks required for custom type`)
+          } else {
+            const sum = o.blocks.reduce((s, b) => s + (b.span || 0), 0)
+            if (sum !== SPAN_TOTAL)
+              errors.push(`overrides[${i}].blocks must sum to ${SPAN_TOTAL} (got ${sum})`)
+            o.blocks.forEach((b, bi) => {
+              if (!VALID_STYLES.has(b.style))
+                errors.push(`overrides[${i}].blocks[${bi}].style "${b.style}" is unknown`)
+            })
+          }
         }
       })
     }
