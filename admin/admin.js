@@ -256,43 +256,60 @@ function renderExams() {
   })
 }
 
+// ── Save helpers ──────────────────────────────────────────────
+// After any successful save, re-fetch from the server so serverData
+// always holds server-assigned fields (id, createdAt, createdBy for
+// announcements). Without this, each subsequent save re-generates
+// those fields, corrupting the announcement list.
+async function syncFromServer() {
+  try {
+    const data = await apiFetch('/api/admin-data')
+    serverData = data
+    editingData.announcements = data.announcements ?? []
+    renderAnnouncements()
+    renderLastSaved(data)
+  } catch { /* non-fatal — UI already shows Saved! */ }
+}
+
+function buildPayload(overrides = {}) {
+  return {
+    timetable:     serverData?.timetable     ?? editingData.timetable,
+    exams:         serverData?.exams         ?? editingData.exams,
+    announcements: serverData?.announcements ?? editingData.announcements,
+    ...overrides
+  }
+}
+
 // ── Save handlers ─────────────────────────────────────────────
 async function saveTimetable() {
-  const btn = document.getElementById('saveTimetableBtn')
+  const btn    = document.getElementById('saveTimetableBtn')
   const status = document.getElementById('saveTimetableStatus')
 
   btn.disabled = true
   status.textContent = 'Saving...'
   status.className = 'save-status'
 
-  // Also sync the other week from server (don't overwrite with stale)
   const otherWeek = activeWeek === 'odd' ? 'even' : 'odd'
-  const payload = {
+  const payload = buildPayload({
     timetable: {
       [activeWeek]: editingData.timetable[activeWeek],
       [otherWeek]:  serverData?.timetable?.[otherWeek] ?? editingData.timetable[otherWeek]
-    },
-    exams:         serverData?.exams          ?? editingData.exams,
-    announcements: serverData?.announcements  ?? editingData.announcements
-  }
+    }
+  })
 
   try {
-    const result = await apiFetch('/api/save', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-    serverData = { ...serverData, timetable: payload.timetable }
+    await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(payload) })
     editingData.timetable[otherWeek] = payload.timetable[otherWeek]
-    renderLastSaved(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Timetable saved ✓', 'success')
+    await syncFromServer()
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
     showToast('Save failed: ' + err.message, 'error')
   } finally {
-    validateAll()  // re-enables button based on state
+    validateAll()
   }
 }
 
@@ -304,22 +321,15 @@ async function saveExams() {
   status.textContent = 'Saving...'
   status.className = 'save-status'
 
-  const payload = {
-    timetable:     serverData?.timetable     ?? editingData.timetable,
-    exams:         editingData.exams,
-    announcements: serverData?.announcements ?? editingData.announcements
-  }
-
   try {
-    const result = await apiFetch('/api/save', {
+    await apiFetch('/api/save', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(buildPayload({ exams: editingData.exams }))
     })
-    serverData = { ...serverData, exams: editingData.exams }
-    renderLastSaved(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Exams saved ✓', 'success')
+    await syncFromServer()
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
@@ -397,22 +407,15 @@ async function saveAnnouncements() {
   status.textContent = 'Saving...'
   status.className = 'save-status'
 
-  const payload = {
-    timetable:     serverData?.timetable ?? editingData.timetable,
-    exams:         serverData?.exams     ?? editingData.exams,
-    announcements: editingData.announcements
-  }
-
   try {
-    const result = await apiFetch('/api/save', {
+    await apiFetch('/api/save', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(buildPayload({ announcements: editingData.announcements }))
     })
-    serverData = { ...serverData, announcements: editingData.announcements }
-    renderLastSaved(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showToast('Announcements saved ✓', 'success')
+    await syncFromServer()  // re-fetch so editingData has server-assigned id/createdAt
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
