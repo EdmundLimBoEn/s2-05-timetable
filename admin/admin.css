@@ -80,6 +80,7 @@ html, body {
 .btn.primary:hover { background: rgba(255,59,59,0.2); }
 .btn.primary:disabled { background: rgba(255,255,255,0.03); border-color: var(--border); color: var(--fg-dim); }
 .btn.small { font-size: 1rem; padding: 3px 10px; }
+.btn.large { font-size: 1.6rem; padding: 10px 24px; width: 100%; letter-spacing: 0.14em; }
 
 /* ── Tabs ────────────────────────────────────────────────────── */
 .admin-tabs {

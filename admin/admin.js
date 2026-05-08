@@ -391,9 +391,10 @@ function renderAnnouncements() {
     delBtn.className = 'btn danger small'
     delBtn.textContent = '✕'
     delBtn.title = 'Delete announcement'
-    delBtn.addEventListener('click', () => {
+    delBtn.addEventListener('click', async () => {
       editingData.announcements.splice(idx, 1)
       renderAnnouncements()
+      await saveAnnouncements()
     })
 
     card.appendChild(body)
@@ -403,28 +404,15 @@ function renderAnnouncements() {
 }
 
 async function saveAnnouncements() {
-  const btn    = document.getElementById('saveAnncsBtn')
-  const status = document.getElementById('saveAnncsStatus')
-
-  btn.disabled = true
-  status.textContent = 'Saving...'
-  status.className = 'save-status'
-
   try {
     const result = await apiFetch('/api/save', {
       method: 'POST',
       body: JSON.stringify(buildPayload({ announcements: editingData.announcements }))
     })
     applySaveResult(result)
-    status.textContent = 'Saved!'
-    status.className = 'save-status ok'
     showToast('Announcements saved ✓', 'success')
   } catch (err) {
-    status.textContent = err.message
-    status.className = 'save-status err'
     showToast('Save failed: ' + err.message, 'error')
-  } finally {
-    btn.disabled = false
   }
 }
 
@@ -497,7 +485,6 @@ document.getElementById('addExamBtn').addEventListener('click', () => {
   editingData.exams.push({ label: '', date: '' })
   renderExams()
 })
-document.getElementById('saveAnncsBtn').addEventListener('click', saveAnnouncements)
 document.getElementById('addAnncBtn').addEventListener('click', async () => {
   const title = document.getElementById('anncTitle').value.trim()
   if (!title) { showToast('Title is required', 'error'); return }
