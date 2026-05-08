@@ -577,9 +577,10 @@ function setBottomLayout(mode) {
   if (toggle) toggle.style.display = mode === 'single' ? '' : 'none'
   const splitBtn  = document.getElementById('btnLayoutSplit')
   const singleBtn = document.getElementById('btnLayoutSingle')
-  if (splitBtn)  { splitBtn.setAttribute('aria-pressed',  String(mode === 'split'));  splitBtn.classList.toggle('active', mode === 'split') }
-  if (singleBtn) { singleBtn.setAttribute('aria-pressed', String(mode === 'single')); singleBtn.classList.toggle('active', mode === 'single') }
-  movePill('pillLayout', document.getElementById(mode === 'split' ? 'btnLayoutSplit' : 'btnLayoutSingle'))
+  if (splitBtn)  { splitBtn.classList.toggle('active', mode === 'split');  splitBtn.setAttribute('aria-pressed', String(mode === 'split')) }
+  if (singleBtn) { singleBtn.classList.toggle('active', mode === 'single'); singleBtn.setAttribute('aria-pressed', String(mode === 'single')) }
+  // Pill positioning requires the toolbar to be visible — defer one frame
+  requestAnimationFrame(() => movePill('pillLayout', mode === 'split' ? splitBtn : singleBtn))
   if (mode === 'single') setBottomPane(activeBottomPane)
   else {
     document.getElementById('journalPane')?.classList.remove('hidden')
@@ -593,9 +594,55 @@ function setBottomPane(pane) {
   document.getElementById('anncsPane')?.classList.toggle('hidden', pane !== 'anncs')
   const jBtn = document.getElementById('btnPaneJournal')
   const aBtn = document.getElementById('btnPaneAnncs')
-  if (jBtn) { jBtn.setAttribute('aria-pressed', String(pane === 'journal')); jBtn.classList.toggle('active', pane === 'journal') }
-  if (aBtn) { aBtn.setAttribute('aria-pressed', String(pane === 'anncs'));   aBtn.classList.toggle('active', pane === 'anncs') }
-  movePill('pillBottomPane', document.getElementById(pane === 'journal' ? 'btnPaneJournal' : 'btnPaneAnncs'))
+  if (jBtn) { jBtn.classList.toggle('active', pane === 'journal'); jBtn.setAttribute('aria-pressed', String(pane === 'journal')) }
+  if (aBtn) { aBtn.classList.toggle('active', pane === 'anncs');   aBtn.setAttribute('aria-pressed', String(pane === 'anncs')) }
+  requestAnimationFrame(() => movePill('pillBottomPane', pane === 'journal' ? jBtn : aBtn))
+}
+
+// ── Bottom panel resize ────────────────────────────────────────
+const BOTTOM_MIN_H = 100
+const BOTTOM_MAX_H = Math.round(window.innerHeight * 0.7)
+
+function initResize() {
+  const handle = document.getElementById('resizeHandle')
+  const panel  = document.getElementById('bottomPanel')
+  if (!handle || !panel) return
+
+  const saved = parseInt(localStorage.getItem('bottom-height') || '')
+  if (!isNaN(saved)) panel.style.height = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+
+  let dragStartY = 0, dragStartH = 0
+
+  function onMove(clientY) {
+    const dy = dragStartY - clientY
+    const h  = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, dragStartH + dy))
+    panel.style.height = h + 'px'
+  }
+  function onUp() {
+    localStorage.setItem('bottom-height', Math.round(parseFloat(panel.style.height) || 260))
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup',   onUp)
+    document.removeEventListener('touchmove', onTouchMove)
+    document.removeEventListener('touchend',  onUp)
+    document.body.style.cursor = ''
+  }
+  function onMouseMove(e) { onMove(e.clientY) }
+  function onTouchMove(e) { e.preventDefault(); onMove(e.touches[0].clientY) }
+
+  handle.addEventListener('mousedown', e => {
+    dragStartY = e.clientY
+    dragStartH = panel.getBoundingClientRect().height
+    document.body.style.cursor = 'ns-resize'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup',   onUp)
+    e.preventDefault()
+  })
+  handle.addEventListener('touchstart', e => {
+    dragStartY = e.touches[0].clientY
+    dragStartH = panel.getBoundingClientRect().height
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend',  onUp)
+  }, { passive: true })
 }
 
 // ── B10: PWA install prompt ────────────────────────────────────
@@ -970,7 +1017,6 @@ function buildSettingsPanel() {
   applyCompact()
   updateNotifBtns()
   buildStats()
-  setBottomLayout(bottomLayout)
   updateInstallBtn()
 }
 
@@ -1303,6 +1349,7 @@ setTimeout(async () => {
   initJournal()
   renderAnncs()
   setBottomLayout(bottomLayout)
+  initResize()
 }, 50)
 
 // ── B3: Touch swipe to switch week ────────────────────────────

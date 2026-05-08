@@ -1164,24 +1164,61 @@ tr.day-absent td .cell:not(.empty) {
 /* ── Bottom panel ─────────────────────────────────────────────── */
 .bottom-panel {
   width: 100%;
-  padding: 0 0 env(safe-area-inset-bottom);
   box-sizing: border-box;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  height: 260px;
+  min-height: 100px;
+  max-height: 70vh;
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 }
-.bottom-panel.split-mode { display: flex; flex-direction: row; min-height: 220px; }
-.bottom-panel.single-mode { display: flex; flex-direction: column; }
 
-.bottom-pane-toggle {
-  align-self: center;
-  margin: 10px auto 0;
+.bottom-panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  height: 36px;
+  flex-shrink: 0;
+  cursor: ns-resize;
+  user-select: none;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
+.bottom-panel-toolbar:hover .resize-grip { opacity: 0.4; }
+
+.resize-grip {
+  width: 32px; height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  flex-shrink: 0;
+  opacity: 0.2;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.bottom-toolbar-center { flex: 1; display: flex; justify-content: center; }
+
+.bottom-layout-tog .tog-btn { font-size: 1rem; padding: 2px 12px; }
+
+.bottom-panes {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.bottom-panel.split-mode .bottom-panes { flex-direction: row; }
+.bottom-panel.single-mode .bottom-panes { flex-direction: column; }
 
 .bottom-pane {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 14px 16px;
+  padding: 10px 14px;
   min-width: 0;
+  overflow: hidden;
 }
 .bottom-panel.split-mode .bottom-pane + .bottom-pane {
   border-left: 1px solid rgba(255,255,255,0.06);
@@ -1190,34 +1227,38 @@ tr.day-absent td .cell:not(.empty) {
 
 .bottom-pane-hd {
   font-family: 'VT323', monospace;
-  font-size: 1.1rem;
+  font-size: 1rem;
   letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.35);
-  margin-bottom: 8px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 6px;
+  flex-shrink: 0;
 }
 
 .journal-textarea {
   flex: 1;
   width: 100%;
-  min-height: 140px;
   background: transparent;
   border: none;
   outline: none;
   color: var(--fg);
   font-family: 'Space Mono', monospace;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   line-height: 1.6;
   resize: none;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .bottom-hint {
   font-family: 'Space Mono', monospace;
-  font-size: 0.6rem;
-  color: rgba(255,255,255,0.15);
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.12);
   letter-spacing: 0.08em;
-  margin-top: 6px;
+  margin-top: 4px;
+  flex-shrink: 0;
 }
+
+.anncs-list { overflow-y: auto; flex: 1; }
 
 /* ── Public announcements cards ──────────────────────────────── */
 .anncs-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1270,14 +1311,6 @@ tr.day-absent td .cell:not(.empty) {
   letter-spacing: 0.05em;
 }
 
-/* ── Layout settings toggle ──────────────────────────────────── */
-.layout-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.layout-tog { flex-shrink: 0; }
 
 /* ── B17: Reduced motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

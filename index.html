@@ -90,19 +90,31 @@
   </main>
 
   <section class="bottom-panel" id="bottomPanel">
-    <div class="bottom-pane-toggle tog-group" id="bottomPaneToggle" style="display:none">
-      <div class="tog-pill" id="pillBottomPane"></div>
-      <button class="tog-btn" id="btnPaneJournal" onclick="setBottomPane('journal')" aria-pressed="true">JOURNAL</button>
-      <button class="tog-btn" id="btnPaneAnncs" onclick="setBottomPane('anncs')" aria-pressed="false">ANNCS</button>
+    <div class="bottom-panel-toolbar" id="resizeHandle">
+      <div class="resize-grip"></div>
+      <div class="bottom-toolbar-center">
+        <div class="tog-group" id="bottomPaneToggle" style="display:none">
+          <div class="tog-pill" id="pillBottomPane"></div>
+          <button class="tog-btn" id="btnPaneJournal" onclick="setBottomPane('journal')" aria-pressed="true">JOURNAL</button>
+          <button class="tog-btn" id="btnPaneAnncs" onclick="setBottomPane('anncs')" aria-pressed="false">ANNCS</button>
+        </div>
+      </div>
+      <div class="tog-group bottom-layout-tog">
+        <div class="tog-pill" id="pillLayout"></div>
+        <button class="tog-btn" id="btnLayoutSplit" onclick="setBottomLayout('split')" aria-pressed="true">SPLIT</button>
+        <button class="tog-btn" id="btnLayoutSingle" onclick="setBottomLayout('single')" aria-pressed="false">SINGLE</button>
+      </div>
     </div>
-    <div class="bottom-pane" id="journalPane">
-      <div class="bottom-pane-hd">JOURNAL</div>
-      <textarea id="journalText" class="journal-textarea" placeholder="Notes, todos, thoughts…" maxlength="50000"></textarea>
-      <span class="bottom-hint">Saved on this device</span>
-    </div>
-    <div class="bottom-pane" id="anncsPane">
-      <div class="bottom-pane-hd">ANNOUNCEMENTS</div>
-      <div id="anncsList" class="anncs-list"></div>
+    <div class="bottom-panes" id="bottomPanes">
+      <div class="bottom-pane" id="journalPane">
+        <div class="bottom-pane-hd">JOURNAL</div>
+        <textarea id="journalText" class="journal-textarea" placeholder="Notes, todos, thoughts…" maxlength="50000"></textarea>
+        <span class="bottom-hint">Saved on this device</span>
+      </div>
+      <div class="bottom-pane" id="anncsPane">
+        <div class="bottom-pane-hd">ANNOUNCEMENTS</div>
+        <div id="anncsList" class="anncs-list"></div>
+      </div>
     </div>
   </section>
 
@@ -184,18 +196,6 @@
         <div class="notif-time-row" id="notifTimeRow" style="display:none">
           <span class="demo-label">TIME</span>
           <input type="time" id="notifTime" class="demo-time" value="19:30">
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-hd">BOTTOM PANEL</div>
-        <div class="layout-toggle-row">
-          <span class="demo-toggle-label">Layout</span>
-          <div class="tog-group layout-tog" role="group" aria-label="Bottom panel layout">
-            <div class="tog-pill" id="pillLayout"></div>
-            <button class="tog-btn" id="btnLayoutSplit" onclick="setBottomLayout('split')" aria-pressed="true">SPLIT</button>
-            <button class="tog-btn" id="btnLayoutSingle" onclick="setBottomLayout('single')" aria-pressed="false">SINGLE</button>
-          </div>
         </div>
       </div>
 
