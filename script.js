@@ -101,7 +101,7 @@ function calcDaysToBreak() {
 const THEME_VARS = {
   bg:       '#080808',
   red:      '#ff3b3b',
-  teal:     '#ffe5f6',
+  teal:     '#ff80c8',
   'c-el':   '#4fc3f7',
   'c-math': '#ff8a65',
   'c-sci':  '#81c784',
@@ -324,8 +324,8 @@ function applyTheme(overrides) {
   const [tr, tg, tb] = hexToRgb(full.teal)
   let css = ':root{'
   for (const [k, v] of Object.entries(full)) css += `--${k}:${v};`
-  css += `--teal-a:rgba(${tr},${tg},${tb},0.15);`
-  css += `--teal-dim:rgba(${tr},${tg},${tb},0.38);`
+  css += `--teal-a:rgba(${tr},${tg},${tb},0.25);`
+  css += `--teal-dim:rgba(${tr},${tg},${tb},0.55);`
   css += '}'
 
   for (const s of subjects) {

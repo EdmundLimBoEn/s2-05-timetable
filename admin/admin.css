@@ -8,9 +8,9 @@
   --fg-dim:  rgba(255,255,255,0.25);
   --red:     #ff3b3b;
   --red-dim: rgba(255,59,59,0.15);
-  --teal:    #ffe5f6;
-  --teal-a:  rgba(255,229,246,0.15);
-  --teal-dim: rgba(255,229,246,0.38);
+  --teal:    #ff80c8;
+  --teal-a:  rgba(255,128,200,0.25);
+  --teal-dim: rgba(255,128,200,0.55);
 }
 
 html, body {
@@ -80,7 +80,7 @@ html, body {
   background: var(--teal-a);
   border-color: var(--teal-dim);
 }
-.btn.primary:hover { background: rgba(255,229,246,0.25); }
+.btn.primary:hover { background: rgba(255,128,200,0.38); }
 .btn.primary:disabled { background: rgba(255,255,255,0.03); border-color: var(--border); color: var(--fg-dim); }
 .btn.small { font-size: 1rem; padding: 3px 10px; }
 .btn.large { font-size: 1.6rem; padding: 10px 24px; width: 100%; letter-spacing: 0.14em; }
@@ -388,7 +388,7 @@ html, body {
   cursor: pointer;
   transition: background .2s;
 }
-.login-submit:hover { background: rgba(255,229,246,0.25); }
+.login-submit:hover { background: rgba(255,128,200,0.38); }
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .login-error {

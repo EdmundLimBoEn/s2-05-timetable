@@ -6,9 +6,9 @@
   --fg-dim:   #3a3a3a;
   --red:      #ff3b3b;
   --red-a:    rgba(255, 59, 59, 0.15);
-  --teal:     #ffe5f6;
-  --teal-a:   rgba(255, 229, 246, 0.15);
-  --teal-dim: rgba(255, 229, 246, 0.38);
+  --teal:     #ff80c8;
+  --teal-a:   rgba(255, 128, 200, 0.25);
+  --teal-dim: rgba(255, 128, 200, 0.55);
 
   --c-el:   #4fc3f7;
   --c-math: #ff8a65;
