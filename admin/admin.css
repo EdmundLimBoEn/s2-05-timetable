@@ -8,6 +8,9 @@
   --fg-dim:  rgba(255,255,255,0.25);
   --red:     #ff3b3b;
   --red-dim: rgba(255,59,59,0.15);
+  --teal:    #ff80c8;
+  --teal-a:  rgba(255,128,200,0.25);
+  --teal-dim: rgba(255,128,200,0.55);
 }
 
 html, body {
@@ -74,10 +77,10 @@ html, body {
 .btn.danger:hover { color: var(--red); background: var(--red-dim); border-color: rgba(255,59,59,0.4); }
 .btn.primary {
   color: #fff;
-  background: rgba(255,59,59,0.12);
-  border-color: rgba(255,59,59,0.35);
+  background: var(--teal-a);
+  border-color: var(--teal-dim);
 }
-.btn.primary:hover { background: rgba(255,59,59,0.2); }
+.btn.primary:hover { background: rgba(255,128,200,0.38); }
 .btn.primary:disabled { background: rgba(255,255,255,0.03); border-color: var(--border); color: var(--fg-dim); }
 .btn.small { font-size: 1rem; padding: 3px 10px; }
 .btn.large { font-size: 1.6rem; padding: 10px 24px; width: 100%; letter-spacing: 0.14em; }
@@ -105,7 +108,7 @@ html, body {
   margin-bottom: -1px;
 }
 .admin-tab:hover { color: #fff; }
-.admin-tab.active { color: #fff; border-bottom-color: var(--red); }
+.admin-tab.active { color: #fff; border-bottom-color: var(--teal); }
 
 /* ── Content area ────────────────────────────────────────────── */
 .admin-content {
@@ -378,14 +381,14 @@ html, body {
   font-size: 1.5rem;
   letter-spacing: 0.12em;
   padding: 8px;
-  background: rgba(255,59,59,0.12);
-  border: 1px solid rgba(255,59,59,0.35);
+  background: var(--teal-a);
+  border: 1px solid var(--teal-dim);
   border-radius: 6px;
   color: #fff;
   cursor: pointer;
   transition: background .2s;
 }
-.login-submit:hover { background: rgba(255,59,59,0.22); }
+.login-submit:hover { background: rgba(255,128,200,0.38); }
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .login-error {

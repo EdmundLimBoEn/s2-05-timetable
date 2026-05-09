@@ -101,6 +101,7 @@ function calcDaysToBreak() {
 const THEME_VARS = {
   bg:       '#080808',
   red:      '#ff3b3b',
+  teal:     '#ff80c8',
   'c-el':   '#4fc3f7',
   'c-math': '#ff8a65',
   'c-sci':  '#81c784',
@@ -118,6 +119,7 @@ const THEME_VARS = {
 const THEME_LABELS = {
   bg:       'BACKGROUND',
   red:      'ACCENT',
+  teal:     'INTERACT',
   'c-el':   'ENGLISH',
   'c-math': 'MATH',
   'c-sci':  'SCIENCE',
@@ -319,13 +321,16 @@ function applyTheme(overrides) {
   const full = { ...THEME_VARS, ...overrides }
   const subjects = ['el','math','sci','hum','mt','sw','cce','hsl','hbl','cm','admt','ict']
 
+  const [tr, tg, tb] = hexToRgb(full.teal)
   let css = ':root{'
   for (const [k, v] of Object.entries(full)) css += `--${k}:${v};`
+  css += `--teal-a:rgba(${tr},${tg},${tb},0.25);`
+  css += `--teal-dim:rgba(${tr},${tg},${tb},0.55);`
   css += '}'
 
   for (const s of subjects) {
     const [r, g, b] = hexToRgb(full[`c-${s}`])
-    css += `.cell.${s}{background:rgba(${r},${g},${b},0.06)}`
+    css += `.cell.${s}{background:rgba(${r},${g},${b},0.11)}`
   }
 
   let styleEl = document.getElementById('theme-ovr')
