@@ -8,8 +8,9 @@
   --fg-dim:  rgba(255,255,255,0.25);
   --red:     #ff3b3b;
   --red-dim: rgba(255,59,59,0.15);
-  --teal:    #00e5d0;
-  --teal-a:  rgba(0,229,208,0.12);
+  --teal:    #ffe5f6;
+  --teal-a:  rgba(255,229,246,0.15);
+  --teal-dim: rgba(255,229,246,0.38);
 }
 
 html, body {
@@ -77,9 +78,9 @@ html, body {
 .btn.primary {
   color: #fff;
   background: var(--teal-a);
-  border-color: rgba(0,229,208,0.35);
+  border-color: var(--teal-dim);
 }
-.btn.primary:hover { background: rgba(0,229,208,0.2); }
+.btn.primary:hover { background: rgba(255,229,246,0.25); }
 .btn.primary:disabled { background: rgba(255,255,255,0.03); border-color: var(--border); color: var(--fg-dim); }
 .btn.small { font-size: 1rem; padding: 3px 10px; }
 .btn.large { font-size: 1.6rem; padding: 10px 24px; width: 100%; letter-spacing: 0.14em; }
@@ -381,13 +382,13 @@ html, body {
   letter-spacing: 0.12em;
   padding: 8px;
   background: var(--teal-a);
-  border: 1px solid rgba(0,229,208,0.35);
+  border: 1px solid var(--teal-dim);
   border-radius: 6px;
   color: #fff;
   cursor: pointer;
   transition: background .2s;
 }
-.login-submit:hover { background: rgba(0,229,208,0.22); }
+.login-submit:hover { background: rgba(255,229,246,0.25); }
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .login-error {

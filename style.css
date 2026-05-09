@@ -6,8 +6,9 @@
   --fg-dim:   #3a3a3a;
   --red:      #ff3b3b;
   --red-a:    rgba(255, 59, 59, 0.15);
-  --teal:     #00e5d0;
-  --teal-a:   rgba(0, 229, 208, 0.12);
+  --teal:     #ffe5f6;
+  --teal-a:   rgba(255, 229, 246, 0.15);
+  --teal-dim: rgba(255, 229, 246, 0.38);
 
   --c-el:   #4fc3f7;
   --c-math: #ff8a65;
@@ -135,7 +136,7 @@ body {
   top: 3px;
   bottom: 3px;
   border-radius: 999px;
-  background: rgba(0,229,208,0.22);
+  background: var(--teal-a);
   transition: left .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1);
   pointer-events: none;
 }
@@ -501,7 +502,7 @@ tr.today-row td .cell:not(.empty) {
 .next-label {
   font-family: 'Space Mono', monospace;
   font-size: 0.75rem;
-  color: rgba(0,229,208,0.55);
+  color: var(--teal-dim);
   letter-spacing: 0.12em;
   flex-shrink: 0;
 }
@@ -650,7 +651,7 @@ tr.today-row td .cell:not(.empty) {
 .theme-btn.confirm {
   color: #fff;
   background: var(--teal-a);
-  border-color: rgba(0,229,208,0.35);
+  border-color: var(--teal-dim);
 }
 
 /* ── Settings sections ──────────────────────────────────────── */
@@ -742,8 +743,8 @@ tr.today-row td .cell:not(.empty) {
   transition: transform .25s, background .25s;
 }
 .toggle-wrap input:checked + .toggle-track {
-  background: rgba(0,229,208,0.2);
-  border-color: rgba(0,229,208,0.4);
+  background: var(--teal-a);
+  border-color: var(--teal-dim);
 }
 .toggle-wrap input:checked + .toggle-track .toggle-thumb {
   transform: translateX(18px);
@@ -793,7 +794,7 @@ tr.today-row td .cell:not(.empty) {
 .demo-chip.active {
   color: #fff;
   background: var(--teal-a);
-  border-color: rgba(0,229,208,0.35);
+  border-color: var(--teal-dim);
 }
 
 .demo-time {
@@ -807,8 +808,8 @@ tr.today-row td .cell:not(.empty) {
   letter-spacing: 0.05em;
 }
 .demo-time:focus {
-  outline: 1px solid rgba(0,229,208,0.4);
-  border-color: rgba(0,229,208,0.3);
+  outline: 1px solid var(--teal-dim);
+  border-color: var(--teal-dim);
 }
 .demo-time::-webkit-calendar-picker-indicator {
   filter: invert(0.6);
@@ -919,8 +920,8 @@ body.compact .cell .subj { font-size: 0.95rem; }
   letter-spacing: 0.04em;
 }
 .note-input:focus {
-  outline: 1px solid rgba(0,229,208,0.4);
-  border-color: rgba(0,229,208,0.3);
+  outline: 1px solid var(--teal-dim);
+  border-color: var(--teal-dim);
 }
 .note-actions { display: flex; gap: 8px; }
 
