@@ -19,7 +19,7 @@ jobs:
           URL=$(vercel deploy \
             --token "${{ secrets.VERCEL_TOKEN }}" \
             --scope "${{ secrets.VERCEL_ORG_ID }}" \
-            --yes 2>&1 | tail -1)
+            --yes 2>&1 | grep -Eo 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Alias to testing subdomain
