@@ -233,17 +233,27 @@ vercel deploy --prod
 
 ### Standard dev workflow
 
-1. **Test first** — deploy a preview and alias to the testing subdomain, then verify at https://testing.timetable.edmundlim.systems before touching production.
-2. **PR to main** — once happy, open a PR from `dev` → `main`. Vercel auto-deploys `main` to production on merge.
-3. **Direct prod deploy** (hotfixes only) — `vercel deploy --prod`.
+**Whenever the user says "push to dev", "commit to dev", "deploy", or any similar phrase implying work is ready:**
+1. Commit all changes to the `dev` branch and push to `origin/dev`.
+2. Run `vercel deploy` and capture the preview URL.
+3. Run `vercel alias <preview-url> testing.timetable.edmundlim.systems`.
+4. Open (or update) a PR from `dev` → `main` via `gh pr create` (or `gh pr edit` if one already exists).
+Do all four steps automatically — do not wait to be asked separately for each.
+
+For production (`main`):
+- Merging the PR triggers an automatic Vercel deploy.
+- Hotfixes only: `vercel deploy --prod`.
 
 ```bash
-# Step 1: preview deploy + alias to testing subdomain
-vercel deploy                         # outputs a preview URL
-vercel alias <preview-url> testing.timetable.edmundlim.systems
+# Commit + push
+git add <files> && git commit -m "..." && git push origin dev
 
-# Step 2: merge PR → automatic production deploy
-# (or manually: vercel deploy --prod)
+# Preview deploy + alias
+URL=$(vercel deploy 2>&1 | grep -Eo 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
+vercel alias "$URL" testing.timetable.edmundlim.systems
+
+# PR (create or update)
+gh pr create --title "..." --body "..." || gh pr edit <number> --body "..."
 ```
 
 Vercel CLI must be installed (`npm i -g vercel`). Project is already linked (`.vercel/project.json` present — no need to run `vercel link` again).
