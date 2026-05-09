@@ -270,7 +270,7 @@ The GitHub repo (`EdmundLimBoEn/s2-05-timetable`) is connected to Vercel — pus
 
 ## Service worker
 
-`sw.js` cache name is currently `tt-v8`. Bump it (`tt-v9`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+`sw.js` cache name is currently `tt-v9`. Bump it (`tt-v10`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
 
 ---
 

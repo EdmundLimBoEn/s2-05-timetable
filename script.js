@@ -61,8 +61,20 @@ const SCHOOL_HOLIDAYS_2026 = [
   { label: 'YEAR-END HOLS',start: '2026-11-23', end: '2026-12-31' },
 ]
 
+function localDateStr(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function localStartOfDay(iso) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).getTime()
+}
+
 function isHoliday(date) {
-  const d = date.toISOString().slice(0, 10)
+  const d = localDateStr(date)
   return SCHOOL_HOLIDAYS_2026.find(h => d >= h.start && d <= h.end) || null
 }
 
@@ -76,12 +88,12 @@ function getNextSchoolDay(from = new Date()) {
 }
 
 function calcDaysToBreak() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr(new Date())
   const next  = SCHOOL_HOLIDAYS_2026
     .filter(h => h.start > today)
     .sort((a, b) => a.start.localeCompare(b.start))[0]
   if (!next) return null
-  const days = Math.ceil((new Date(next.start) - Date.now()) / 86_400_000)
+  const days = Math.ceil((localStartOfDay(next.start) - Date.now()) / 86_400_000)
   return { label: next.label, days }
 }
 
@@ -236,7 +248,7 @@ let currentTheme = {}
 let demoMode     = false
 let demoDay      = 3    // Wednesday
 let demoMins     = 705  // 11:45
-let compact      = !!localStorage.getItem('compact')
+let compact      = localStorage.getItem('compact') === '1'
 
 // Bar visibility prefs
 let barPrefs = Object.assign(
@@ -245,7 +257,7 @@ let barPrefs = Object.assign(
 )
 function saveBarPrefs() { localStorage.setItem('bar-prefs', JSON.stringify(barPrefs)) }
 
-let compactBars = !!localStorage.getItem('compact-bars')
+let compactBars = localStorage.getItem('compact-bars') === '1'
 
 function parseNote(raw) {
   if (!raw) return null
@@ -343,18 +355,18 @@ function decodeTheme(code) {
 }
 
 // ── Week auto-detection ────────────────────────────────────────
-function calcWeek() {
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const weeksDiff = Math.floor((Date.now() - new Date(TERM_START.date)) / msPerWeek)
+function calcWeek(now = Date.now()) {
+  const days = Math.floor((now - localStartOfDay(TERM_START.date)) / 86_400_000)
+  const weeks = Math.floor(days / 7)
   const startIsOdd = TERM_START.week === 'odd'
-  return (weeksDiff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+  return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
 }
 
 function calcTermWeek() {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000
   const now = Date.now()
   for (let i = TERMS_2026.length - 1; i >= 0; i--) {
-    const start = new Date(TERMS_2026[i].start).getTime()
+    const start = localStartOfDay(TERMS_2026[i].start)
     if (now >= start) {
       const w = Math.floor((now - start) / msPerWeek) + 1
       return w <= 10 ? { term: TERMS_2026[i].term, week: w } : null
@@ -364,10 +376,10 @@ function calcTermWeek() {
 }
 
 function weekForDate(d) {
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const diff = Math.floor((d.getTime() - new Date(TERM_START.date).getTime()) / msPerWeek)
+  const days = Math.floor((d.getTime() - localStartOfDay(TERM_START.date)) / 86_400_000)
+  const weeks = Math.floor(days / 7)
   const startIsOdd = TERM_START.week === 'odd'
-  return (diff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+  return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
 }
 
 function firstRealBlock(schedule) {
@@ -567,6 +579,8 @@ function markAnncsSeen(ids) {
   localStorage.setItem('anncs-seen', JSON.stringify([...seen]))
 }
 
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+
 function renderAnncs() {
   const container = document.getElementById('anncsList')
   if (!container) return
@@ -577,11 +591,11 @@ function renderAnncs() {
   }
   container.innerHTML = sorted.map(a => {
     const date = a.createdAt ? new Date(a.createdAt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : ''
-    const body = a.body ? `<div class="anncs-card-text">${a.body.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''
+    const body = a.body ? `<div class="anncs-card-text">${esc(a.body).replace(/\n/g,'<br>')}</div>` : ''
     return `<div class="anncs-card">
       <div class="anncs-card-hd">
-        <span class="anncs-cat-pill ${a.category}">${a.category.toUpperCase()}</span>
-        <span class="anncs-card-title">${a.title.replace(/</g,'&lt;')}</span>
+        <span class="anncs-cat-pill ${esc(a.category)}">${esc(a.category).toUpperCase()}</span>
+        <span class="anncs-card-title">${esc(a.title)}</span>
       </div>
       ${body}
       <div class="anncs-card-meta">${date}</div>
@@ -671,7 +685,6 @@ function setBottomPane(pane) {
 
 // ── Bottom panel resize ────────────────────────────────────────
 const BOTTOM_MIN_H = 100
-const BOTTOM_MAX_H = Math.round(window.innerHeight * 0.7)
 
 function initResize() {
   const handle = document.getElementById('resizeHandle')
@@ -679,13 +692,17 @@ function initResize() {
   if (!handle || !panel) return
 
   const saved = parseInt(localStorage.getItem('bottom-height') || '')
-  if (!isNaN(saved)) panel.style.height = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+  if (!isNaN(saved)) {
+    const maxH = Math.round(window.innerHeight * 0.7)
+    panel.style.height = Math.min(maxH, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+  }
 
   let dragStartY = 0, dragStartH = 0
 
   function onMove(clientY) {
+    const maxH = Math.round(window.innerHeight * 0.7)
     const dy = dragStartY - clientY
-    const h  = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, dragStartH + dy))
+    const h  = Math.min(maxH, Math.max(BOTTOM_MIN_H, dragStartH + dy))
     panel.style.height = h + 'px'
   }
   function onUp() {
