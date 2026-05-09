@@ -289,11 +289,11 @@ function applySaveResult(result) {
 
 function buildPayload(patch = {}) {
   return {
-    timetable:     serverData?.timetable     ?? editingData.timetable,
-    exams:         serverData?.exams         ?? editingData.exams,
-    announcements: serverData?.announcements ?? editingData.announcements,
-    overrides:     serverData?.overrides     ?? editingData.overrides,
-    extendedHours: serverData?.extendedHours ?? editingData.extendedHours ?? false,
+    timetable:     editingData.timetable,
+    exams:         editingData.exams,
+    announcements: editingData.announcements,
+    overrides:     editingData.overrides,
+    extendedHours: editingData.extendedHours ?? false,
     ...patch
   }
 }
@@ -308,18 +308,11 @@ async function saveTimetable() {
   status.className = 'save-status'
   showSaveBar('saving')
 
-  const otherWeek = activeWeek === 'odd' ? 'even' : 'odd'
-  const payload = buildPayload({
-    timetable: {
-      [activeWeek]: editingData.timetable[activeWeek],
-      [otherWeek]:  serverData?.timetable?.[otherWeek] ?? editingData.timetable[otherWeek]
-    }
-  })
+  const payload = buildPayload()
 
   try {
     const result = await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(payload) })
-    editingData.timetable[otherWeek] = payload.timetable[otherWeek]
-    serverData = { ...serverData, timetable: payload.timetable }
+    serverData = { ...serverData, timetable: deepClone(editingData.timetable) }
     applySaveResult(result)
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
@@ -653,12 +646,15 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
 })
 
 // ── Week toggle ────────────────────────────────────────────────
-document.querySelectorAll('.week-btn').forEach(btn => {
+// Scope to [data-week] only — the hours buttons share .week-btn but
+// must not interfere with activeWeek or each other's active state.
+document.querySelectorAll('.week-btn[data-week]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.week-btn[data-week]').forEach(b => b.classList.remove('active'))
     btn.classList.add('active')
     activeWeek = btn.dataset.week
     renderTimetable()
+    renderHoursToggle()
   })
 })
 
