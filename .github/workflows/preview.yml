@@ -17,13 +17,13 @@ jobs:
         id: deploy
         run: |
           URL=$(vercel deploy \
-            --token ${{ secrets.VERCEL_TOKEN }} \
-            --scope ${{ secrets.VERCEL_ORG_ID }} \
+            --token "${{ secrets.VERCEL_TOKEN }}" \
+            --scope "${{ secrets.VERCEL_ORG_ID }}" \
             --yes 2>&1 | tail -1)
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Alias to testing subdomain
         run: |
-          vercel alias ${{ steps.deploy.outputs.url }} testing.timetable.edmundlim.systems \
-            --token ${{ secrets.VERCEL_TOKEN }} \
-            --scope ${{ secrets.VERCEL_ORG_ID }}
+          vercel alias "${{ steps.deploy.outputs.url }}" testing.timetable.edmundlim.systems \
+            --token "${{ secrets.VERCEL_TOKEN }}" \
+            --scope "${{ secrets.VERCEL_ORG_ID }}"
