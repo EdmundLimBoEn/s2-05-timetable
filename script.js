@@ -61,8 +61,20 @@ const SCHOOL_HOLIDAYS_2026 = [
   { label: 'YEAR-END HOLS',start: '2026-11-23', end: '2026-12-31' },
 ]
 
+function localDateStr(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function localStartOfDay(iso) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).getTime()
+}
+
 function isHoliday(date) {
-  const d = date.toISOString().slice(0, 10)
+  const d = localDateStr(date)
   return SCHOOL_HOLIDAYS_2026.find(h => d >= h.start && d <= h.end) || null
 }
 
@@ -76,12 +88,12 @@ function getNextSchoolDay(from = new Date()) {
 }
 
 function calcDaysToBreak() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr(new Date())
   const next  = SCHOOL_HOLIDAYS_2026
     .filter(h => h.start > today)
     .sort((a, b) => a.start.localeCompare(b.start))[0]
   if (!next) return null
-  const days = Math.ceil((new Date(next.start) - Date.now()) / 86_400_000)
+  const days = Math.ceil((localStartOfDay(next.start) - Date.now()) / 86_400_000)
   return { label: next.label, days }
 }
 
@@ -236,7 +248,30 @@ let currentTheme = {}
 let demoMode     = false
 let demoDay      = 3    // Wednesday
 let demoMins     = 705  // 11:45
-let compact      = !!localStorage.getItem('compact')
+let compact      = localStorage.getItem('compact') === '1'
+
+// Bar visibility prefs
+let barPrefs = Object.assign(
+  { now: true, next: true, upcoming: true, exam: true, bring: true, toast: true },
+  JSON.parse(localStorage.getItem('bar-prefs') || '{}')
+)
+function saveBarPrefs() { localStorage.setItem('bar-prefs', JSON.stringify(barPrefs)) }
+
+let compactBars = localStorage.getItem('compact-bars') === '1'
+
+function parseNote(raw) {
+  if (!raw) return null
+  try { const o = JSON.parse(raw); if (o && typeof o === 'object') return o } catch {}
+  return { text: raw }
+}
+function noteClasses(key) {
+  const n = parseNote(localStorage.getItem(key))
+  if (!n) return ''
+  let c = ' has-note'
+  if (n.done) c += ' note-done'
+  if (n.due && !n.done && n.due <= new Date().toISOString().slice(0, 10)) c += ' note-due'
+  return c
+}
 
 let classNotifEnabled  = false
 let classNotifTimeouts = []
@@ -320,18 +355,18 @@ function decodeTheme(code) {
 }
 
 // ── Week auto-detection ────────────────────────────────────────
-function calcWeek() {
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const weeksDiff = Math.floor((Date.now() - new Date(TERM_START.date)) / msPerWeek)
+function calcWeek(now = Date.now()) {
+  const days = Math.floor((now - localStartOfDay(TERM_START.date)) / 86_400_000)
+  const weeks = Math.floor(days / 7)
   const startIsOdd = TERM_START.week === 'odd'
-  return (weeksDiff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+  return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
 }
 
 function calcTermWeek() {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000
   const now = Date.now()
   for (let i = TERMS_2026.length - 1; i >= 0; i--) {
-    const start = new Date(TERMS_2026[i].start).getTime()
+    const start = localStartOfDay(TERMS_2026[i].start)
     if (now >= start) {
       const w = Math.floor((now - start) / msPerWeek) + 1
       return w <= 10 ? { term: TERMS_2026[i].term, week: w } : null
@@ -341,10 +376,10 @@ function calcTermWeek() {
 }
 
 function weekForDate(d) {
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const diff = Math.floor((d.getTime() - new Date(TERM_START.date).getTime()) / msPerWeek)
+  const days = Math.floor((d.getTime() - localStartOfDay(TERM_START.date)) / 86_400_000)
+  const weeks = Math.floor(days / 7)
   const startIsOdd = TERM_START.week === 'odd'
-  return (diff % 2 === 0) === startIsOdd ? 'odd' : 'even'
+  return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
 }
 
 function firstRealBlock(schedule) {
@@ -399,7 +434,7 @@ function checkExams() {
   const days = Math.max(0, Math.ceil((next.ms - now) / (24 * 60 * 60 * 1000)))
   const extra = upcoming.length > 1 ? ` + ${upcoming.length - 1} MORE` : ''
   txt.textContent = `${next.label} · ${days === 0 ? 'TODAY' : `IN ${days} ${days === 1 ? 'DAY' : 'DAYS'}`}${extra}`
-  bar.style.display = 'flex'
+  bar.style.display = barPrefs.exam ? 'flex' : 'none'
 }
 
 // ── B11: Bring-today bar ───────────────────────────────────────
@@ -412,7 +447,7 @@ function updateBringBar() {
   const day  = TIMETABLE[week][dow - 1]
   const uniq = [...new Set(day.filter(b => b.style !== 'empty' && b.style !== 'brk').map(b => ABBREV[b.style]))]
   subj.textContent = uniq.join(' · ')
-  bar.style.display = 'flex'
+  bar.style.display = barPrefs.bring ? 'flex' : 'none'
 }
 
 // ── B12: Offline indicator ─────────────────────────────────────
@@ -451,7 +486,12 @@ function openNoteModal(cellId) {
   const cell     = document.getElementById(cellId)
   const subjText = cell?.querySelector('.subj')?.textContent || 'CELL'
   document.getElementById('noteModalTitle').textContent = subjText + ' · NOTE'
-  document.getElementById('noteInput').value = localStorage.getItem(noteKey) || ''
+  const n = parseNote(localStorage.getItem(noteKey)) || {}
+  document.getElementById('noteInput').value = n.text || ''
+  const doneCb = document.getElementById('noteDone')
+  if (doneCb) doneCb.checked = !!n.done
+  const dueDt  = document.getElementById('noteDue')
+  if (dueDt) dueDt.value = n.due || ''
   document.getElementById('noteOverlay').style.display = 'block'
   document.getElementById('noteModal').style.display   = 'block'
   document.getElementById('noteInput').focus()
@@ -465,11 +505,26 @@ function closeNoteModal() {
 
 function saveNote() {
   if (!currentNoteKey) return
-  const val    = document.getElementById('noteInput').value.trim()
-  const cellId = 'c-' + currentNoteKey.slice(5)   // 'note-odd-0-2' → 'c-odd-0-2'
-  if (val) localStorage.setItem(currentNoteKey, val)
-  else localStorage.removeItem(currentNoteKey)
-  document.getElementById(cellId)?.classList.toggle('has-note', !!val)
+  const text   = document.getElementById('noteInput').value.trim()
+  const done   = document.getElementById('noteDone')?.checked || false
+  const due    = document.getElementById('noteDue')?.value || ''
+  const cellId = 'c-' + currentNoteKey.slice(5)
+  const today  = new Date().toISOString().slice(0, 10)
+  if (text || done || due) {
+    const obj = { text }
+    if (done) obj.done = true
+    if (due)  obj.due  = due
+    localStorage.setItem(currentNoteKey, JSON.stringify(obj))
+  } else {
+    localStorage.removeItem(currentNoteKey)
+  }
+  const cell = document.getElementById(cellId)
+  if (cell) {
+    const hasAny = !!(text || done || due)
+    cell.classList.toggle('has-note',  hasAny)
+    cell.classList.toggle('note-done', done)
+    cell.classList.toggle('note-due',  !!due && !done && due <= today)
+  }
   closeNoteModal()
 }
 
@@ -477,7 +532,7 @@ function clearNote() {
   if (!currentNoteKey) return
   localStorage.removeItem(currentNoteKey)
   const cellId = 'c-' + currentNoteKey.slice(5)
-  document.getElementById(cellId)?.classList.remove('has-note')
+  document.getElementById(cellId)?.classList.remove('has-note', 'note-done', 'note-due')
   closeNoteModal()
 }
 
@@ -524,6 +579,8 @@ function markAnncsSeen(ids) {
   localStorage.setItem('anncs-seen', JSON.stringify([...seen]))
 }
 
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+
 function renderAnncs() {
   const container = document.getElementById('anncsList')
   if (!container) return
@@ -534,11 +591,11 @@ function renderAnncs() {
   }
   container.innerHTML = sorted.map(a => {
     const date = a.createdAt ? new Date(a.createdAt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : ''
-    const body = a.body ? `<div class="anncs-card-text">${a.body.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''
+    const body = a.body ? `<div class="anncs-card-text">${esc(a.body).replace(/\n/g,'<br>')}</div>` : ''
     return `<div class="anncs-card">
       <div class="anncs-card-hd">
-        <span class="anncs-cat-pill ${a.category}">${a.category.toUpperCase()}</span>
-        <span class="anncs-card-title">${a.title.replace(/</g,'&lt;')}</span>
+        <span class="anncs-cat-pill ${esc(a.category)}">${esc(a.category).toUpperCase()}</span>
+        <span class="anncs-card-title">${esc(a.title)}</span>
       </div>
       ${body}
       <div class="anncs-card-meta">${date}</div>
@@ -550,6 +607,7 @@ let toastQueue = []
 let toastBusy  = false
 
 function showAnncToast(annc) {
+  if (!barPrefs.toast) { markAnncsSeen([annc.id]); return }
   toastQueue.push(annc)
   if (!toastBusy) drainToastQueue()
 }
@@ -627,7 +685,6 @@ function setBottomPane(pane) {
 
 // ── Bottom panel resize ────────────────────────────────────────
 const BOTTOM_MIN_H = 100
-const BOTTOM_MAX_H = Math.round(window.innerHeight * 0.7)
 
 function initResize() {
   const handle = document.getElementById('resizeHandle')
@@ -635,13 +692,17 @@ function initResize() {
   if (!handle || !panel) return
 
   const saved = parseInt(localStorage.getItem('bottom-height') || '')
-  if (!isNaN(saved)) panel.style.height = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+  if (!isNaN(saved)) {
+    const maxH = Math.round(window.innerHeight * 0.7)
+    panel.style.height = Math.min(maxH, Math.max(BOTTOM_MIN_H, saved)) + 'px'
+  }
 
   let dragStartY = 0, dragStartH = 0
 
   function onMove(clientY) {
+    const maxH = Math.round(window.innerHeight * 0.7)
     const dy = dragStartY - clientY
-    const h  = Math.min(BOTTOM_MAX_H, Math.max(BOTTOM_MIN_H, dragStartH + dy))
+    const h  = Math.min(maxH, Math.max(BOTTOM_MIN_H, dragStartH + dy))
     panel.style.height = h + 'px'
   }
   function onUp() {
@@ -747,7 +808,7 @@ function buildTable(wk) {
             : `${durMins} MIN`)
         : ''
       const noteKey   = `note-${wk}-${di}-${bi}`
-      const noteClass = localStorage.getItem(noteKey) ? ' has-note' : ''
+      const noteClass = noteClasses(noteKey)
       html += `<td colspan="${sp}"><div class="cell ${b.style}${noteClass}" id="c-${wk}-${di}-${bi}"><span class="subj">${inner}</span>${durStr ? `<span class="dur">${durStr}</span>` : ''}${isReal ? '<div class="period-bar"></div>' : ''}</div></td>`
     })
 
@@ -834,6 +895,7 @@ function tick() {
   const nextBar      = document.getElementById('nextBar')
   const nextSubj     = document.getElementById('nextSubj')
   const nextTime     = document.getElementById('nextTime')
+  const glanceBar    = document.getElementById('glanceBar')
 
   const weekday = getEffectiveDow() >= 1 && getEffectiveDow() <= 5
   const inHours = nm >= ALL_MINS[0] && nm <= END_MIN
@@ -849,6 +911,7 @@ function tick() {
     tl.style.display     = 'none'
     nowBar.style.display = 'none'
     if (nextBar) nextBar.style.display = 'none'
+    if (glanceBar) glanceBar.style.display = 'none'
 
     if (upcomingBar) {
       const dow = getEffectiveDow()
@@ -894,7 +957,7 @@ function tick() {
           detail.classList.toggle('has-sw', hasSW)
         }
       }
-      upcomingBar.style.display = 'flex'
+      upcomingBar.style.display = barPrefs.upcoming ? 'flex' : 'none'
     }
     return
   }
@@ -924,7 +987,7 @@ function tick() {
       if (nowP >= startSlot && nowP < endSlot) {
         activeBlock = { b, bi, startSlot, endSlot }
       } else if (activeBlock && !nextBlock && b.style !== 'empty' && b.style !== 'brk') {
-        nextBlock = { b, startSlot }
+        nextBlock = { b, bi, startSlot }
       }
       pIdx += b.span
     }
@@ -941,23 +1004,28 @@ function tick() {
       activeBlock.b.style !== 'brk' &&
       activeBlock.b.label !== '—'
 
+    let blockEndMin = null
+    let minsLeft    = null
     if (isRealClass) {
-      const blockEndMin = activeBlock.endSlot < ALL_MINS.length
+      blockEndMin = activeBlock.endSlot < ALL_MINS.length
         ? ALL_MINS[activeBlock.endSlot]
         : END_MIN
-      const minsLeft = blockEndMin - nm
+      minsLeft = blockEndMin - nm
       const blockStartMin = ALL_MINS[activeBlock.startSlot]
       const progress = Math.min(1, (nm - blockStartMin) / (blockEndMin - blockStartMin))
       document.querySelector(`#c-${week}-${di}-${activeBlock.bi} .period-bar`)
         ?.style.setProperty('width', `${progress * 100}%`)
-      nowBar.style.display  = 'flex'
-      nowSubj.textContent   = activeBlock.b.label
-      if (nowCountdown) nowCountdown.textContent = (minsLeft < 1 ? '< 1' : minsLeft) + ' MIN'
-      // B2: school-ends label
-      const nowEndsEl = document.getElementById('nowEnds')
-      if (nowEndsEl && day) {
-        const ends = lastClassEndMin(day)
-        nowEndsEl.textContent = ends ? 'ENDS ' + fmtMins(ends) : ''
+      if (!compactBars && barPrefs.now) {
+        nowBar.style.display  = 'flex'
+        nowSubj.textContent   = activeBlock.b.label
+        if (nowCountdown) nowCountdown.textContent = (minsLeft < 1 ? '< 1' : minsLeft) + ' MIN'
+        const nowEndsEl = document.getElementById('nowEnds')
+        if (nowEndsEl && day) {
+          const ends = lastClassEndMin(day)
+          nowEndsEl.textContent = ends ? 'ENDS ' + fmtMins(ends) : ''
+        }
+      } else {
+        nowBar.style.display = 'none'
       }
     } else {
       nowBar.style.display = 'none'
@@ -966,20 +1034,48 @@ function tick() {
     }
 
     // Next bar — show whenever there's an upcoming class
+    let nextStartMin = null
     if (nextBlock && nextBar) {
-      const startMin = nextBlock.startSlot < ALL_MINS.length
+      nextStartMin = nextBlock.startSlot < ALL_MINS.length
         ? ALL_MINS[nextBlock.startSlot]
         : null
-      nextSubj.textContent  = nextBlock.b.label
-      nextTime.textContent  = startMin !== null ? fmtMins(startMin) : ''
-      nextBar.style.display = 'flex'
+      if (!compactBars && barPrefs.next) {
+        nextSubj.textContent  = nextBlock.b.label
+        nextTime.textContent  = nextStartMin !== null ? fmtMins(nextStartMin) : ''
+        nextBar.style.display = 'flex'
+      } else {
+        nextBar.style.display = 'none'
+      }
     } else if (nextBar) {
       nextBar.style.display = 'none'
+    }
+
+    // Glance bar — one-line compact summary
+    if (glanceBar) {
+      if (compactBars && (isRealClass || nextBlock)) {
+        let text = ''
+        if (isRealClass && minsLeft !== null) {
+          text = `NOW · ${activeBlock.b.label} · ${minsLeft < 1 ? '< 1' : minsLeft} MIN LEFT`
+          if (nextBlock) {
+            const moreAfter = day.slice(nextBlock.bi + 1)
+              .filter(b => b.style !== 'empty' && b.style !== 'brk').length
+            text += `  →  NEXT ${nextStartMin !== null ? fmtMins(nextStartMin) + ' · ' : ''}${nextBlock.b.label}`
+            if (moreAfter > 0) text += `  ·  ${moreAfter} MORE`
+          }
+        } else if (nextBlock) {
+          text = `NEXT · ${nextBlock.b.label}${nextStartMin !== null ? ' · ' + fmtMins(nextStartMin) : ''}`
+        }
+        document.getElementById('glanceText').textContent = text
+        glanceBar.style.display = 'flex'
+      } else {
+        glanceBar.style.display = 'none'
+      }
     }
 
   } else {
     nowBar.style.display = 'none'
     if (nextBar) nextBar.style.display = 'none'
+    if (glanceBar) glanceBar.style.display = 'none'
   }
 
   // Position the time line
@@ -1049,6 +1145,8 @@ function buildSettingsPanel() {
   }
 
   applyCompact()
+  applyCompactBars()
+  applyBarPrefs()
   updateNotifBtns()
   buildStats()
   updateInstallBtn()
@@ -1079,9 +1177,10 @@ document.addEventListener('keydown', e => {
   }
   if (document.getElementById('noteModal').style.display !== 'none') return
   if (document.getElementById('themePanel').classList.contains('open')) return
-  // B13: keyboard shortcuts — left/right = switch week, s = settings
+  // B13: keyboard shortcuts — left/right = switch week, s = settings, f = focus mode
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') setWeek(week === 'odd' ? 'even' : 'odd')
   else if (e.key === 's' || e.key === 'S') openTheme()
+  else if (e.key === 'f' || e.key === 'F') document.body.classList.toggle('focus-mode')
 })
 
 document.getElementById('themeCopyLink').addEventListener('click', () => {
@@ -1187,6 +1286,38 @@ document.getElementById('compactToggle')?.addEventListener('change', e => {
   if (compact) localStorage.setItem('compact', '1')
   else localStorage.removeItem('compact')
   applyCompact()
+})
+
+// ── Compact bars ────────────────────────────────────────────────
+function applyCompactBars() {
+  const t = document.getElementById('compactBarsToggle')
+  if (t) t.checked = compactBars
+}
+
+document.getElementById('compactBarsToggle')?.addEventListener('change', e => {
+  compactBars = e.target.checked
+  if (compactBars) localStorage.setItem('compact-bars', '1')
+  else localStorage.removeItem('compact-bars')
+  tick()
+})
+
+// ── Bar visibility prefs ────────────────────────────────────────
+function applyBarPrefs() {
+  const keys = ['now', 'next', 'upcoming', 'exam', 'bring', 'toast']
+  keys.forEach(key => {
+    const el = document.getElementById(`barPref-${key}`)
+    if (el) el.checked = barPrefs[key]
+  })
+}
+
+document.getElementById('barPrefsContainer')?.addEventListener('change', e => {
+  const key = e.target.dataset.barPref
+  if (!key) return
+  barPrefs[key] = e.target.checked
+  saveBarPrefs()
+  tick()
+  checkExams()
+  updateBringBar()
 })
 
 // ── Notifications ──────────────────────────────────────────────

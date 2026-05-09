@@ -29,7 +29,8 @@ export async function verifySession(token) {
 export function getAdmins() {
   try {
     return JSON.parse(process.env.ADMINS_JSON || '[]')
-  } catch {
+  } catch (err) {
+    console.error('[getAdmins] ADMINS_JSON parse failed:', err.message)
     return []
   }
 }

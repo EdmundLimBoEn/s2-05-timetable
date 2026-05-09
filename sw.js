@@ -1,5 +1,5 @@
-const CACHE    = 'tt-v7'
-const PRECACHE = ['./', './index.html', './script.js', './style.css', './icon.svg', './manifest.json']
+const CACHE    = 'tt-v9'
+const PRECACHE = ['./', './index.html', './script.js', './style.css', './icon.svg', './favicon.svg', './manifest.json']
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)))

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { getAdminFromRequest } from './_lib/auth.js'
 import { setData } from './_lib/kv.js'
 import { validateData } from './_lib/validate.js'
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
   // Assign server-side id + timestamp for any new announcement missing them
   const announcements = (body.announcements ?? []).map(a => ({
     ...a,
-    id:        a.id        || crypto.randomUUID(),
+    id:        a.id        || randomUUID(),
     createdAt: a.createdAt || new Date().toISOString(),
     createdBy: a.createdBy || username,
   }))
