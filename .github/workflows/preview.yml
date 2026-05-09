@@ -7,6 +7,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -15,15 +18,15 @@ jobs:
 
       - name: Deploy to Vercel preview
         id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          URL=$(vercel deploy \
-            --token "${{ secrets.VERCEL_TOKEN }}" \
-            --scope "${{ secrets.VERCEL_ORG_ID }}" \
-            --yes 2>&1 | grep -Eo 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
+          URL=$(vercel deploy --yes 2>&1 | grep -Eo 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Alias to testing subdomain
+        if: steps.deploy.outputs.url != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          vercel alias "${{ steps.deploy.outputs.url }}" testing.timetable.edmundlim.systems \
-            --token "${{ secrets.VERCEL_TOKEN }}" \
-            --scope "${{ secrets.VERCEL_ORG_ID }}"
+          vercel alias "${{ steps.deploy.outputs.url }}" testing.timetable.edmundlim.systems
