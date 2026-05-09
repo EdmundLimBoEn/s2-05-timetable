@@ -938,7 +938,7 @@ body.compact .cell .subj { font-size: 0.95rem; }
 @media print {
   .scanlines, .topbar-right, .now-bar, .next-bar, .upcoming-bar,
   .exam-bar, .bring-bar, .sw-update-bar, .demo-banner, .time-line,
-  .theme-overlay, .theme-panel, .note-overlay, .note-modal, .bottom,
+  .glance-bar, .theme-overlay, .theme-panel, .note-overlay, .note-modal, .bottom,
   .offlineBadge { display: none !important; }
   .topbar { border-bottom: 1px solid #ccc; }
   body { background: #fff; color: #000; min-height: unset; }
@@ -1333,4 +1333,84 @@ tr.day-absent td .cell:not(.empty) {
   .tog-pill, .toggle-track, .toggle-thumb { transition: none; }
   .theme-panel, .theme-overlay { transition: none; }
   .tt-table { transition: none; }
+}
+
+/* ── Glance bar ──────────────────────────────────────────────── */
+.glance-bar {
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.glance-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Focus mode ──────────────────────────────────────────────── */
+body.focus-mode .scanlines { opacity: 0.03; }
+body.focus-mode .topbar-right { opacity: 0; pointer-events: none; }
+body.focus-mode .bring-bar,
+body.focus-mode .exam-bar,
+body.focus-mode .upcoming-bar,
+body.focus-mode .next-bar,
+body.focus-mode .sw-update-bar,
+body.focus-mode .demo-banner,
+body.focus-mode .bottom-panel,
+body.focus-mode footer { display: none !important; }
+body.focus-mode .tt-table tbody tr:not(.today-row) { opacity: 0.18; }
+body.focus-mode .tt-table tbody tr:not(.today-row):hover { opacity: 0.45; }
+
+/* ── Note: done + due states ─────────────────────────────────── */
+.cell.note-done .subj { opacity: 0.4; text-decoration: line-through; }
+.cell.note-due::before {
+  content: '!';
+  position: absolute;
+  top: 3px; left: 5px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  color: #ffb74d;
+  line-height: 1;
+}
+
+/* ── Note modal extra fields ─────────────────────────────────── */
+.note-extra-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.note-done-label,
+.note-due-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+}
+.note-due-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.75);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  padding: 3px 6px;
+}
+
+/* ── Settings hint text ──────────────────────────────────────── */
+.settings-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.25);
+  margin: 0 0 8px;
+  letter-spacing: 0.03em;
 }

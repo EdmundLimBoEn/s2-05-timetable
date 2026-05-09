@@ -72,6 +72,11 @@
     <span class="next-time" id="nextTime"></span>
   </div>
 
+  <div class="glance-bar" id="glanceBar" style="display:none">
+    <span class="now-dot"></span>
+    <span class="glance-text" id="glanceText"></span>
+  </div>
+
   <div class="upcoming-bar" id="upcomingBar" style="display:none">
     <span class="upcoming-label" id="upcomingLabel">NEXT</span>
     <span class="upcoming-day" id="upcomingDay"></span>
@@ -184,6 +189,62 @@
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
           </span>
         </label>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Compact bars (glance mode)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="compactBarsToggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">DISPLAY</div>
+        <p class="settings-hint">Toggle which status bars are shown.</p>
+        <div id="barPrefsContainer">
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Now bar</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-now" data-bar-pref="now" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Next bar</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-next" data-bar-pref="next" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Upcoming bar</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-upcoming" data-bar-pref="upcoming" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Exam countdown</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-exam" data-bar-pref="exam" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Bring today</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-bring" data-bar-pref="bring" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+          <label class="demo-toggle-row">
+            <span class="demo-toggle-label">Announcement toast</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" id="barPref-toast" data-bar-pref="toast" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -223,6 +284,16 @@
       <button class="theme-close" id="noteModalClose">&#x2715;</button>
     </div>
     <input type="text" id="noteInput" class="note-input" placeholder="e.g. bring calculator" maxlength="80" autocomplete="off">
+    <div class="note-extra-row">
+      <label class="note-done-label">
+        <input type="checkbox" id="noteDone">
+        <span>Done</span>
+      </label>
+      <label class="note-due-label">
+        <span>Due</span>
+        <input type="date" id="noteDue" class="note-due-input">
+      </label>
+    </div>
     <div class="note-actions">
       <button class="theme-btn" id="noteSave">SAVE</button>
       <button class="theme-btn" id="noteClear">CLEAR</button>

@@ -231,19 +231,28 @@ vercel deploy --prod
 
 ## Deployment
 
+### Standard dev workflow
+
+1. **Test first** — deploy a preview and alias to the testing subdomain, then verify at https://testing.timetable.edmundlim.systems before touching production.
+2. **PR to main** — once happy, open a PR from `dev` → `main`. Vercel auto-deploys `main` to production on merge.
+3. **Direct prod deploy** (hotfixes only) — `vercel deploy --prod`.
+
 ```bash
-vercel deploy --prod          # production
-vercel deploy                 # preview (then alias to testing subdomain)
+# Step 1: preview deploy + alias to testing subdomain
+vercel deploy                         # outputs a preview URL
 vercel alias <preview-url> testing.timetable.edmundlim.systems
+
+# Step 2: merge PR → automatic production deploy
+# (or manually: vercel deploy --prod)
 ```
 
-Vercel CLI must be installed (`npm i -g vercel`) and linked (`vercel link`).
+Vercel CLI must be installed (`npm i -g vercel`). Project is already linked (`.vercel/project.json` present — no need to run `vercel link` again).
 
-The GitHub repo is connected to Vercel — pushes to `main` trigger automatic deploys too.
+The GitHub repo (`EdmundLimBoEn/s2-05-timetable`) is connected to Vercel — pushes/merges to `main` trigger automatic production deploys.
 
 ### Custom domains
 - `timetable.edmundlim.systems` — production. DNS: A record `timetable → 76.76.21.21` at Cloudflare (DNS-only, not proxied).
-- `testing.timetable.edmundlim.systems` — preview alias. DNS: A record `testing.timetable → 76.76.21.21` at Cloudflare (DNS-only). Re-alias after each preview deploy.
+- `testing.timetable.edmundlim.systems` — preview alias. DNS: A record `testing.timetable → 76.76.21.21` at Cloudflare (DNS-only). Re-alias after each new preview deploy.
 
 ---
 
@@ -261,7 +270,7 @@ The GitHub repo is connected to Vercel — pushes to `main` trigger automatic de
 
 ## Service worker
 
-`sw.js` cache name is currently `tt-v7`. Bump it (`tt-v8`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+`sw.js` cache name is currently `tt-v8`. Bump it (`tt-v9`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
 
 ---
 
