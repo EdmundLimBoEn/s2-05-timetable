@@ -559,7 +559,12 @@ function initJournal() {
 // ── Overrides ──────────────────────────────────────────────────
 let OVERRIDES = []
 
-function iso(d) { return d.toISOString().slice(0, 10) }
+function iso(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 // Calendar date represented by a given (wk, dayIdx) row,
 // computed relative to today. If wk !== calcWeek(), jumps to next week.
