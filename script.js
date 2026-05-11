@@ -1492,39 +1492,56 @@ setTimeout(async () => {
   rebuild()
   checkExams()
 
-  // Fetch live data; re-render timetable/exams only when updatedAt changes,
-  // but always sync announcements so they appear even on first load.
-  let lastUpdatedAt = null
+  // Fetch live data; re-render timetable/exams only when updatedAt changes.
+  // On each poll, /api/version is checked first (cheap Edge Config read served
+  // from CDN cache). /api/data (Blob read) is only fetched when the version
+  // differs from what we last applied, or on the very first load.
+  let lastUpdatedAt = undefined // undefined = never loaded; null = loaded, no saves yet
+
+  async function applyRemoteData(remote) {
+    const remoteAnncs = Array.isArray(remote.announcements) ? remote.announcements : []
+    checkNewAnncs(remoteAnncs)
+    ANNCS = remoteAnncs
+    renderAnncs()
+
+    const remoteOverrides = Array.isArray(remote.overrides) ? remote.overrides : []
+    const overridesChanged = JSON.stringify(remoteOverrides) !== JSON.stringify(OVERRIDES)
+    OVERRIDES = remoteOverrides
+
+    if (typeof remote.extendedHours === 'boolean') {
+      const isExtended = N_COLS > 21
+      if (remote.extendedHours !== isExtended) setExtendedHours(remote.extendedHours)
+    }
+
+    if (overridesChanged) rebuild()
+
+    if (remote.updatedAt === lastUpdatedAt) return
+    lastUpdatedAt = remote.updatedAt ?? null
+    if (remote.timetable) TIMETABLE = remote.timetable
+    if (Array.isArray(remote.exams)) EXAMS = remote.exams
+    rebuild()
+    checkExams()
+  }
+
   async function refreshData() {
     try {
-      const res = await fetch('/api/data', { cache: 'no-store' })
-      if (!res.ok) return
-      const remote = await res.json()
-
-      // Announcements + overrides: always sync regardless of updatedAt
-      const remoteAnncs = Array.isArray(remote.announcements) ? remote.announcements : []
-      checkNewAnncs(remoteAnncs)
-      ANNCS = remoteAnncs
-      renderAnncs()
-
-      const remoteOverrides = Array.isArray(remote.overrides) ? remote.overrides : []
-      const overridesChanged = JSON.stringify(remoteOverrides) !== JSON.stringify(OVERRIDES)
-      OVERRIDES = remoteOverrides
-
-      // Extended hours: apply before any rebuild
-      if (typeof remote.extendedHours === 'boolean') {
-        const isExtended = N_COLS > 21
-        if (remote.extendedHours !== isExtended) setExtendedHours(remote.extendedHours)
+      // Skip the full blob fetch if the version token says nothing has changed.
+      // On initial load (lastUpdatedAt === undefined) always fetch.
+      if (lastUpdatedAt !== undefined) {
+        try {
+          const vRes = await fetch('/api/version', { cache: 'no-store' })
+          if (vRes.ok) {
+            const { updatedAt } = await vRes.json()
+            if (updatedAt === lastUpdatedAt) return // nothing changed — skip blob read
+          }
+        } catch {
+          // version check failed — fall through to full fetch
+        }
       }
 
-      if (overridesChanged) rebuild()
-
-      if (remote.updatedAt === lastUpdatedAt) return   // timetable/exams unchanged
-      lastUpdatedAt = remote.updatedAt
-      if (remote.timetable) TIMETABLE = remote.timetable
-      if (Array.isArray(remote.exams)) EXAMS = remote.exams
-      rebuild()
-      checkExams()
+      const res = await fetch('/api/data', { cache: 'no-store' })
+      if (!res.ok) return
+      await applyRemoteData(await res.json())
     } catch {
       // Offline or server unavailable — keep current data
     }

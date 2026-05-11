@@ -3,6 +3,33 @@ import { SEED } from './seed.js'
 
 const PATHNAME = 'timetable-data.json'
 
+// Write updatedAt to Edge Config so clients can cheaply detect changes.
+// Uses the Vercel REST API — requires VERCEL_TOKEN and VERCEL_TEAM_ID env vars.
+// Non-fatal: a failure here does not break the save.
+async function syncEdgeConfigVersion(updatedAt) {
+  const ec      = process.env.EDGE_CONFIG
+  const token   = process.env.VERCEL_TOKEN
+  const teamId  = process.env.VERCEL_TEAM_ID
+  if (!ec || !token || !teamId) return
+
+  const match = ec.match(/edge-config\.vercel\.com\/(ecfg_[^?]+)/)
+  if (!match) { console.error('[edge-config] cannot parse store ID from EDGE_CONFIG'); return }
+  const storeId = match[1]
+
+  const res = await fetch(
+    `https://api.vercel.com/v1/edge-config/${storeId}/items?teamId=${teamId}`,
+    {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ items: [{ operation: 'upsert', key: 'updatedAt', value: updatedAt }] }),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`[edge-config] update failed ${res.status}: ${text}`)
+  }
+}
+
 export async function getData() {
   try {
     const { blobs } = await list({ prefix: PATHNAME, limit: 1 })
@@ -41,5 +68,8 @@ export async function setData(timetable, exams, announcements, overrides, extend
     allowOverwrite:  true,
     contentType:     'application/json'
   })
+  await syncEdgeConfigVersion(data.updatedAt).catch(err =>
+    console.error('[edge-config] sync threw:', err.message)
+  )
   return data
 }
