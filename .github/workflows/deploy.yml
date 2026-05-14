@@ -40,7 +40,7 @@ jobs:
             --exclude='node_modules' \
             --exclude='data' \
             --exclude='.env' \
-            -e "ssh -v -o StrictHostKeyChecking=no" \
+            -e "ssh -o StrictHostKeyChecking=no" \
             ./ "edmundlim@hackclub.app:$TARGET/"
 
           ssh edmundlim@hackclub.app "
