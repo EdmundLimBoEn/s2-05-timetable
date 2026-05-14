@@ -1,0 +1,24 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, dev]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger deploy webhook
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            BODY='{}'
+          else
+            BODY='{"branch":"dev","pm2":"timetable-dev"}'
+          fi
+
+          RESPONSE=$(curl -f -X POST "https://timetable.edmundlim.systems/api/deploy" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+          echo "Webhook response: $RESPONSE"

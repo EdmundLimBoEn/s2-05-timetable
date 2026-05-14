@@ -153,11 +153,10 @@ git add -A
 git commit -m "Configure timetable for <class name> <year>"
 ```
 
-Then deploy to the testing URL:
+Then push to the `dev` branch to trigger a deploy to the testing URL:
 
 ```
-vercel deploy
-vercel alias <preview-url> <your-testing-domain>
+git push origin dev
 ```
 
 Verify the timetable renders correctly for both odd and even weeks before merging to `main`.
