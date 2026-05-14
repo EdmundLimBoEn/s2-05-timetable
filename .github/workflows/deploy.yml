@@ -11,6 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: ssh-keyscan -H hackclub.app >> ~/.ssh/known_hosts
+
       - name: Set target env
         id: env
         run: |
@@ -23,28 +31,19 @@ jobs:
           fi
 
       - name: Deploy to Hack Club server
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H hackclub.app >> ~/.ssh/known_hosts 2>/dev/null
-
           TARGET="${{ steps.env.outputs.dir }}"
           PM2="${{ steps.env.outputs.pm2 }}"
 
-          # Sync files (skip node_modules, data, .env, .git)
           rsync -az --delete \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='data' \
             --exclude='.env' \
-            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            -e "ssh -o StrictHostKeyChecking=no" \
             ./ "edmundlim@hackclub.app:$TARGET/"
 
-          # Install deps and restart
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no edmundlim@hackclub.app "
+          ssh edmundlim@hackclub.app "
             export NVM_DIR=\$HOME/.nvm && . \$NVM_DIR/nvm.sh
             cd $TARGET && npm install --omit=dev
             pm2 describe $PM2 > /dev/null 2>&1 \
