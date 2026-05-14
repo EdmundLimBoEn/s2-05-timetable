@@ -17,7 +17,8 @@ jobs:
             BODY='{"branch":"dev","pm2":"timetable-dev"}'
           fi
 
-          curl -sf -X POST "https://timetable.edmundlim.systems/api/deploy" \
+          RESPONSE=$(curl -f -X POST "https://timetable.edmundlim.systems/api/deploy" \
             -H "Authorization: Bearer ${{ secrets.DEPLOY_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY"
+            -d "$BODY")
+          echo "Webhook response: $RESPONSE"

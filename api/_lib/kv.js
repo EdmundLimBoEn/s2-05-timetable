@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, rename } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rename, unlink } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
@@ -27,11 +27,17 @@ export async function setData(timetable, exams, announcements, overrides, extend
     updatedBy: username
   }
   const dataDir = dirname(DATA_PATH)
-  await mkdir(dataDir, { recursive: true })
   // Atomic write: tmp must be on the same filesystem as destination —
   // rename() across mounts fails with EXDEV on Linux (e.g. /tmp on tmpfs).
   const tmp = join(dataDir, `.timetable-${randomUUID()}.json`)
-  await writeFile(tmp, JSON.stringify(data), 'utf-8')
-  await rename(tmp, DATA_PATH)
+  try {
+    await mkdir(dataDir, { recursive: true })
+    await writeFile(tmp, JSON.stringify(data), 'utf-8')
+    await rename(tmp, DATA_PATH)
+  } catch (err) {
+    console.error('[kv] setData failed (DATA_PATH=%s):', DATA_PATH, err)
+    unlink(tmp).catch(() => {})
+    throw err
+  }
   return data
 }
