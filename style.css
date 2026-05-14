@@ -1333,6 +1333,110 @@ tr.day-absent td .cell:not(.empty) {
 }
 
 
+/* ── Events / Calendar pane ──────────────────────────────────── */
+.events-list {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-cal-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: opacity .2s;
+}
+.event-cal-card.past { opacity: 0.4; }
+
+.event-cal-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.events-cat-pill {
+  display: inline-block;
+  font-family: 'VT323', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  padding: 0 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.events-cat-pill.exam     { background: rgba(255,183,77,0.15);  color: #ffb74d; }
+.events-cat-pill.event    { background: rgba(79,195,247,0.15);  color: #4fc3f7; }
+.events-cat-pill.homework { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+
+.event-cal-label {
+  font-family: 'VT323', monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+}
+
+.event-cal-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.event-cal-days {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: #ffb74d;
+  flex-shrink: 0;
+}
+.event-cal-days.past { color: rgba(255,255,255,0.2); }
+
+.event-cal-details {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.03em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.event-notif-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.event-notif-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.event-notif-sel {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  padding: 2px 5px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
+.event-notif-sel:focus { outline: none; border-color: rgba(255,128,200,0.4); }
+
 /* ── B17: Reduced motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .scanlines { display: none; }

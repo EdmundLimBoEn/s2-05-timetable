@@ -301,6 +301,65 @@ html, body {
   padding: 12px 0 8px;
 }
 
+/* ── Events tab ──────────────────────────────────────────────── */
+.event-add-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.event-add-row  { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.event-add-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.event-type-select { flex-shrink: 0; min-width: 100px; }
+
+.event-link-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.event-link-label input[type="checkbox"] { accent-color: var(--teal); cursor: pointer; }
+
+.event-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.event-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.event-details-input { font-size: 0.65rem; }
+
+.event-linked-chip {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: #4fc3f7;
+  background: rgba(79,195,247,0.1);
+  border: 1px solid rgba(79,195,247,0.25);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* ── Annc date row (conditional) ─────────────────────────────── */
+.annc-date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ── Save bar ────────────────────────────────────────────────── */
 .save-bar {
   position: sticky;

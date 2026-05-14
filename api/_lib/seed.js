@@ -110,11 +110,11 @@ export const SEED = {
     ]
   },
   exams: [
-    { label: 'T2 CA · MATH', date: '2026-05-12' },
-    { label: 'T2 CA · SCI',  date: '2026-05-13' },
-    { label: 'T2 CA · EL',   date: '2026-05-15' },
-    { label: 'T2 CA · HUM',  date: '2026-05-19' },
-    { label: 'T2 CA · CL',   date: '2026-05-20' }
+    { id: '00000000-0001-0000-0000-000000000001', label: 'T2 CA · MATH', date: '2026-05-12', type: 'exam', details: '', announcementId: null },
+    { id: '00000000-0001-0000-0000-000000000002', label: 'T2 CA · SCI',  date: '2026-05-13', type: 'exam', details: '', announcementId: null },
+    { id: '00000000-0001-0000-0000-000000000003', label: 'T2 CA · EL',   date: '2026-05-15', type: 'exam', details: '', announcementId: null },
+    { id: '00000000-0001-0000-0000-000000000004', label: 'T2 CA · HUM',  date: '2026-05-19', type: 'exam', details: '', announcementId: null },
+    { id: '00000000-0001-0000-0000-000000000005', label: 'T2 CA · CL',   date: '2026-05-20', type: 'exam', details: '', announcementId: null }
   ],
   announcements: [],
   overrides: [],
