@@ -250,6 +250,13 @@ pm2 restart timetable
 2. Open (or update) a PR from `dev` → `main` via `gh pr create` (or `gh pr edit` if one already exists).
 Do both steps automatically — do not wait to be asked separately for each.
 
+**After opening or updating any PR, run the CodeRabbit review loop:**
+1. Wait ~60 s, then poll for new CodeRabbit comments: `gh pr view <number> --repo EdmundLimBoEn/s2-05-timetable --comments`
+2. Read every comment posted by `coderabbitai`. For each actionable issue, fix the code in the `dev` branch and commit.
+3. Push the fix to `origin/dev` (the same PR updates automatically).
+4. Repeat from step 1 until a CodeRabbit comment confirms all issues are resolved or there are no new actionable comments.
+Use `gh api repos/EdmundLimBoEn/s2-05-timetable/issues/<number>/comments` to get the full comment text when needed.
+
 Pushing to `origin/dev` triggers GitHub Actions (`.github/workflows/deploy.yml`), which rsyncs to `~/timetable-dev` and restarts the `timetable-dev` PM2 process. `testing.timetable.edmundlim.systems` always shows the dev branch.
 
 For production (`main`):
