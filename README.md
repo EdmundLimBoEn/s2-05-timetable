@@ -27,10 +27,10 @@ Live school timetable for S2-05, SST Singapore — Term 2 2026.
 | Layer | Tech |
 |-------|------|
 | Frontend | Vanilla HTML + CSS + JS — no build step |
-| API | Node.js serverless functions (Vercel) |
-| Storage | Vercel Blob (private, one JSON file) |
+| API | Node.js + Express (`server.js`) |
+| Storage | Local JSON file (`data/timetable-data.json`), atomic write via tmp + rename |
 | Auth | JWT (HS256) in an HTTP-only cookie, bcrypt password hashing |
-| Hosting | Vercel |
+| Hosting | Hack Club Nest (free Linux LXC container), managed by PM2 |
 
 ---
 
@@ -42,20 +42,20 @@ Static site only (API calls won't work without env vars):
 open index.html
 ```
 
-With the API (requires env vars):
+With the API (requires a `.env` file — see `.env.example`):
 
 ```bash
 npm install
-vercel dev
+npm start
 ```
 
-Required environment variables (set via `vercel env`):
+Required environment variables (copy `.env.example` → `.env`):
 
-| Variable | Where | Description |
-|----------|-------|-------------|
-| `BLOB_READ_WRITE_TOKEN` | Production, Preview, Development | Auto-set by Vercel Blob |
-| `ADMINS_JSON` | Production, Preview | `[{"username":"...","passwordHash":"..."}]` |
-| `JWT_SECRET` | Production, Preview | 32-byte random hex |
+| Variable | Description |
+|----------|-------------|
+| `PORT` | `3000` for local dev (production uses `80`) |
+| `ADMINS_JSON` | `[{"username":"...","passwordHash":"..."}]` |
+| `JWT_SECRET` | 32-byte random hex |
 
 To generate a password hash:
 
@@ -69,8 +69,8 @@ node scripts/hash-password.js <password>
 
 | Branch | Deploys to | How |
 |--------|-----------|-----|
-| `dev` | `testing.timetable.edmundlim.systems` | GitHub Actions on every push |
-| `main` | `timetable.edmundlim.systems` | Vercel auto-deploy on merge |
+| `dev` | `testing.timetable.edmundlim.systems` | GitHub Actions → webhook → PM2 restart |
+| `main` | `timetable.edmundlim.systems` | GitHub Actions → webhook → PM2 restart |
 
 **Workflow:** all new work goes on `dev` → open PR to `main` when ready → merge to ship.
 
@@ -94,19 +94,19 @@ Changes are live on the public site within 10 seconds.
 
 You can run your own instance of this app for any class with a repeating odd/even week schedule.
 
-### 1. Fork & deploy
+### 1. Fork & get a server
 
 1. Fork this repo on GitHub
-2. Create a new Vercel project and connect the fork
-3. Add a Vercel Blob store to the project (Storage tab → Create)
-4. Set the environment variables below
-5. Push to `main` — Vercel auto-deploys
+2. Get a server with Node.js — [Hack Club Nest](https://hackclub.com/nest/) is free for students
+3. Clone your fork onto the server and run `npm install`
+4. Copy `.env.example` → `.env` and fill in the variables
+5. Start with PM2: `pm2 start ecosystem.config.cjs`
 
 ### 2. Environment variables
 
 | Variable | How to get it |
 |----------|--------------|
-| `BLOB_READ_WRITE_TOKEN` | Auto-set after adding Vercel Blob |
+| `PORT` | `80` for production (or any open port) |
 | `JWT_SECRET` | Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `ADMINS_JSON` | Run `node scripts/hash-password.js yourpassword`, then format as `[{"username":"you","passwordHash":"<hash>"}]` |
 
@@ -122,4 +122,4 @@ Or do it manually:
 
 ### 4. Custom domain (optional)
 
-Point an A record at `76.76.21.21` in your DNS, then add the domain in Vercel project settings.
+Point a CNAME at your server's hostname (or an A record at its IP) in your DNS provider.
