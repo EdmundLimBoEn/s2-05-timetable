@@ -53,7 +53,9 @@ export function validateData(body) {
     })
   }
 
-  // Validate exams
+  const VALID_EVENT_TYPES = new Set(['exam', 'event', 'homework'])
+
+  // Validate exams/events
   if (!Array.isArray(exams)) {
     errors.push('Missing exams array')
   } else {
@@ -63,6 +65,15 @@ export function validateData(body) {
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) {
         errors.push(`exams[${i}].date must be YYYY-MM-DD (got "${e.date}")`)
+      }
+      if (e.type !== undefined && !VALID_EVENT_TYPES.has(e.type)) {
+        errors.push(`exams[${i}].type must be one of: ${[...VALID_EVENT_TYPES].join(', ')}`)
+      }
+      if (e.details !== undefined && (typeof e.details !== 'string' || e.details.length > 2000)) {
+        errors.push(`exams[${i}].details must be a string ≤2000 chars`)
+      }
+      if (e.time !== undefined && e.time !== null && !/^\d{2}:\d{2}$/.test(e.time)) {
+        errors.push(`exams[${i}].time must be HH:MM or null`)
       }
     })
   }
@@ -81,6 +92,10 @@ export function validateData(body) {
         }
         if (!VALID_CATEGORIES.has(a.category)) {
           errors.push(`announcements[${i}].category must be one of: ${[...VALID_CATEGORIES].join(', ')}`)
+        }
+        if (a.eventDate !== undefined && a.eventDate !== null &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(a.eventDate)) {
+          errors.push(`announcements[${i}].eventDate must be YYYY-MM-DD or null`)
         }
       })
     }

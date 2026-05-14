@@ -286,14 +286,21 @@ let currentNoteKey        = null
 let deferredInstallPrompt = null
 let touchStartX = null, touchStartY = null, touchStartScrollLeft = null
 
-// Hardcoded exam dates — these are fallback defaults; live data comes from /api/data
+// Hardcoded event list — fallback defaults; live data comes from /api/data
 let EXAMS = [
-  { label: 'T2 CA · MATH', date: '2026-05-12' },
-  { label: 'T2 CA · SCI',  date: '2026-05-13' },
-  { label: 'T2 CA · EL',   date: '2026-05-15' },
-  { label: 'T2 CA · HUM',  date: '2026-05-19' },
-  { label: 'T2 CA · CL',   date: '2026-05-20' },
+  { id: '1', label: 'T2 CA · MATH', date: '2026-05-12', type: 'exam', details: '', announcementId: null },
+  { id: '2', label: 'T2 CA · SCI',  date: '2026-05-13', type: 'exam', details: '', announcementId: null },
+  { id: '3', label: 'T2 CA · EL',   date: '2026-05-15', type: 'exam', details: '', announcementId: null },
+  { id: '4', label: 'T2 CA · HUM',  date: '2026-05-19', type: 'exam', details: '', announcementId: null },
+  { id: '5', label: 'T2 CA · CL',   date: '2026-05-20', type: 'exam', details: '', announcementId: null },
 ]
+
+// Per-event notification preferences: { [eventId]: 'none' | '3d:HH:MM' | '30m' }
+let eventNotifPrefs = JSON.parse(localStorage.getItem('event-notif-prefs') || '{}')
+let eventNotifTimeouts = []
+
+// Calendar filter: which event types are shown in the events pane
+let calFilter = JSON.parse(localStorage.getItem('cal-filter') || '{"exam":true,"event":true,"homework":true}')
 
 // ── DOM refs ───────────────────────────────────────────────────
 const wrap = document.getElementById('tableWrap')
@@ -650,6 +657,111 @@ function checkNewAnncs(list) {
   list.filter(a => a.id && !seen.has(a.id)).forEach(showAnncToast)
 }
 
+// ── Events pane ────────────────────────────────────────────────
+const EVENT_ICON = { exam: '📝', event: '📅', homework: '📚' }
+
+function renderEvents() {
+  const container = document.getElementById('eventsCalList')
+  if (!container) return
+  const now = Date.now()
+  const visible = EXAMS
+    .filter(e => calFilter[e.type || 'exam'] !== false)
+    .map(e => ({ ...e, ms: new Date(e.date).getTime() }))
+    .sort((a, b) => a.ms - b.ms)
+
+  if (!visible.length) {
+    container.innerHTML = '<p class="anncs-empty">No upcoming events.</p>'
+    return
+  }
+
+  container.innerHTML = ''
+  for (const ev of visible) {
+    const isPast = ev.ms + 86400000 < now
+    const daysAway = Math.ceil((ev.ms - now) / 86400000)
+    const dayLabel = isPast
+      ? 'PAST'
+      : daysAway === 0 ? 'TODAY'
+      : daysAway === 1 ? 'TOMORROW'
+      : `IN ${daysAway} DAYS`
+
+    const savedPref = eventNotifPrefs[ev.id] || 'none'
+
+    const card = document.createElement('div')
+    card.className = 'event-cal-card' + (isPast ? ' past' : '')
+    const timeStr = ev.time ? ` · ${ev.time}` : ''
+    card.innerHTML = `
+      <div class="event-cal-top">
+        <span class="events-cat-pill ${esc(ev.type || 'exam')}">${esc((ev.type || 'exam').toUpperCase())}</span>
+        <span class="event-cal-label">${esc(ev.label)}</span>
+        <span class="event-cal-date">${esc(ev.date)}${esc(timeStr)}</span>
+        <span class="event-cal-days ${isPast ? 'past' : ''}">${dayLabel}</span>
+      </div>
+      ${ev.details ? `<div class="event-cal-details">${esc(ev.details).replace(/\n/g, '<br>')}</div>` : ''}
+      <div class="event-notif-row">
+        <span class="event-notif-label">REMIND ME:</span>
+        <select class="event-notif-sel" data-event-id="${esc(ev.id)}">
+          <option value="none"${savedPref === 'none' ? ' selected' : ''}>No reminder</option>
+          <option value="3d"${savedPref === '3d' ? ' selected' : ''}>3 days before (9:00 AM)</option>
+          <option value="30m"${savedPref === '30m' ? ' selected' : ''}>30 min before</option>
+        </select>
+      </div>
+    `
+
+    card.querySelector('.event-notif-sel').addEventListener('change', e => {
+      eventNotifPrefs[ev.id] = e.target.value
+      localStorage.setItem('event-notif-prefs', JSON.stringify(eventNotifPrefs))
+      scheduleEventNotifs()
+    })
+
+    container.appendChild(card)
+  }
+}
+
+function clearEventNotifs() {
+  eventNotifTimeouts.forEach(t => clearTimeout(t))
+  eventNotifTimeouts = []
+}
+
+function scheduleEventNotifs() {
+  clearEventNotifs()
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  const now = Date.now()
+  for (const ev of EXAMS) {
+    const pref = eventNotifPrefs[ev.id]
+    if (!pref || pref === 'none') continue
+    const eventMs = new Date(ev.date).getTime()
+    // Build a DateTime for the event using its time field (or midnight if absent)
+    const eventDt = new Date(ev.date)
+    if (ev.time) {
+      const [h, m] = ev.time.split(':').map(Number)
+      eventDt.setHours(h, m, 0, 0)
+    }
+    const eventDtMs = eventDt.getTime()
+
+    let fireMs
+    if (pref === '3d') {
+      const d = new Date(ev.date)
+      d.setDate(d.getDate() - 3)
+      d.setHours(9, 0, 0, 0)
+      fireMs = d.getTime()
+    } else if (pref === '30m') {
+      fireMs = eventDtMs - 30 * 60_000
+    } else continue
+    const delay = fireMs - now
+    if (delay <= 0) continue
+    eventNotifTimeouts.push(setTimeout(() => {
+      const daysAway = Math.round((eventMs - Date.now()) / 86400000)
+      new Notification(`${ev.label}`, {
+        body: pref === '30m'
+          ? `Starting in 30 minutes · ${ev.date}${ev.time ? ' ' + ev.time : ''}`
+          : `In ${daysAway} day${daysAway !== 1 ? 's' : ''} · ${ev.date}${ev.time ? ' ' + ev.time : ''}`,
+        icon: './icon.svg',
+        tag:  `event-${ev.id}`
+      })
+    }, delay))
+  }
+}
+
 // ── Bottom panel layout ────────────────────────────────────────
 let bottomLayout = localStorage.getItem('bottom-layout') || 'split'
 let activeBottomPane = 'journal'
@@ -672,6 +784,7 @@ function setBottomLayout(mode) {
   if (mode === 'single') setBottomPane(activeBottomPane)
   else {
     document.getElementById('journalPane')?.classList.remove('hidden')
+    document.getElementById('eventsPane')?.classList.remove('hidden')
     document.getElementById('anncsPane')?.classList.remove('hidden')
   }
 }
@@ -679,12 +792,16 @@ function setBottomLayout(mode) {
 function setBottomPane(pane) {
   activeBottomPane = pane
   document.getElementById('journalPane')?.classList.toggle('hidden', pane !== 'journal')
+  document.getElementById('eventsPane')?.classList.toggle('hidden', pane !== 'events')
   document.getElementById('anncsPane')?.classList.toggle('hidden', pane !== 'anncs')
   const jBtn = document.getElementById('btnPaneJournal')
+  const eBtn = document.getElementById('btnPaneEvents')
   const aBtn = document.getElementById('btnPaneAnncs')
   if (jBtn) { jBtn.classList.toggle('active', pane === 'journal'); jBtn.setAttribute('aria-pressed', String(pane === 'journal')) }
+  if (eBtn) { eBtn.classList.toggle('active', pane === 'events');  eBtn.setAttribute('aria-pressed', String(pane === 'events')) }
   if (aBtn) { aBtn.classList.toggle('active', pane === 'anncs');   aBtn.setAttribute('aria-pressed', String(pane === 'anncs')) }
-  requestAnimationFrame(() => movePill('pillBottomPane', pane === 'journal' ? jBtn : aBtn))
+  const activeBtn = pane === 'journal' ? jBtn : pane === 'events' ? eBtn : aBtn
+  requestAnimationFrame(() => movePill('pillBottomPane', activeBtn))
 }
 
 // ── Bottom panel resize ────────────────────────────────────────
@@ -1324,6 +1441,20 @@ document.getElementById('barPrefsContainer')?.addEventListener('change', e => {
   updateBringBar()
 })
 
+// ── Calendar filter toggles ───────────────────────────────────
+;['exam', 'event', 'homework'].forEach(type => {
+  const el = document.getElementById(`calFilter-${type}`)
+  if (el) el.checked = calFilter[type] !== false
+})
+document.querySelector('[data-cal-filter]')?.closest('.settings-section')
+  ?.addEventListener('change', e => {
+    const type = e.target.dataset.calFilter
+    if (!type) return
+    calFilter[type] = e.target.checked
+    localStorage.setItem('cal-filter', JSON.stringify(calFilter))
+    renderEvents()
+  })
+
 // ── Notifications ──────────────────────────────────────────────
 function clearClassNotifs() {
   classNotifTimeouts.forEach(clearTimeout)
@@ -1515,6 +1646,8 @@ setTimeout(async () => {
     if (Array.isArray(remote.exams)) EXAMS = remote.exams
     rebuild()
     checkExams()
+    renderEvents()
+    scheduleEventNotifs()
   }
 
   async function refreshData() {
@@ -1549,6 +1682,7 @@ setTimeout(async () => {
   updateOnlineStatus()
   initJournal()
   renderAnncs()
+  renderEvents()
   setBottomLayout(bottomLayout)
   initResize()
 }, 50)

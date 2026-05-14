@@ -46,7 +46,7 @@
 
     <nav class="admin-tabs">
       <button class="admin-tab active" data-tab="timetable">TIMETABLE</button>
-      <button class="admin-tab"        data-tab="exams">EXAMS</button>
+      <button class="admin-tab"        data-tab="events">EVENTS</button>
       <button class="admin-tab"        data-tab="announcements">ANNCS</button>
       <button class="admin-tab"        data-tab="overrides">OVERRIDES</button>
     </nav>
@@ -75,17 +75,38 @@
       </div>
     </div>
 
-    <!-- Exams tab -->
-    <div class="admin-content hidden" id="tabExams">
+    <!-- Events tab -->
+    <div class="admin-content hidden" id="tabEvents">
       <div style="height:16px"></div>
       <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:16px">
-        UPCOMING EXAM DATES · shown on the public site within 7 days of each exam
+        EVENTS &amp; CALENDAR · exams, events, and homework due dates · shown as countdown within 7 days
       </p>
-      <div id="examsList"></div>
-      <button class="btn small" id="addExamBtn" style="margin-bottom:12px">+ ADD EXAM</button>
+
+      <div class="event-add-form">
+        <div class="event-add-row">
+          <select class="annc-cat-select" id="eventType">
+            <option value="exam">EXAM</option>
+            <option value="event">EVENT</option>
+            <option value="homework">HOMEWORK</option>
+          </select>
+          <input class="exam-label-input" id="eventLabel" type="text" placeholder="Label (e.g. T2 CA · MATH)" maxlength="100">
+          <input class="exam-date-input"  id="eventDate"  type="date">
+          <input class="exam-time-input"  id="eventTime"  type="time" placeholder="Time (optional)">
+        </div>
+        <textarea class="annc-body-input" id="eventDetails" placeholder="Details (optional)" maxlength="2000" rows="2"></textarea>
+        <div class="event-add-footer">
+          <label class="event-link-label">
+            <input type="checkbox" id="eventAddToAnnouncement">
+            Also post as announcement
+          </label>
+          <button class="btn primary" id="addEventBtn">+ ADD EVENT</button>
+        </div>
+      </div>
+
+      <div id="eventsList" style="margin-top:16px"></div>
       <div class="save-bar">
-        <button class="btn primary" id="saveExamsBtn">SAVE EXAMS</button>
-        <span class="save-status" id="saveExamsStatus"></span>
+        <button class="btn primary" id="saveEventsBtn">SAVE EVENTS</button>
+        <span class="save-status" id="saveEventsStatus"></span>
       </div>
     </div>
   </div>
@@ -106,6 +127,13 @@
             <option value="exam">EXAM</option>
             <option value="event">EVENT</option>
           </select>
+        </div>
+        <div class="annc-date-row hidden" id="anncDateRow">
+          <input class="exam-date-input" id="anncEventDate" type="date">
+          <label class="event-link-label">
+            <input type="checkbox" id="anncAddToCalendar" checked>
+            Add to calendar
+          </label>
         </div>
         <textarea class="annc-body-input" id="anncBody" placeholder="Body (optional)" maxlength="5000" rows="3"></textarea>
         <button class="btn primary large" id="addAnncBtn">POST ANNOUNCEMENT</button>

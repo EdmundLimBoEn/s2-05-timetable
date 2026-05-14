@@ -7,10 +7,25 @@ import { SEED } from './seed.js'
 const DATA_PATH = process.env.DATA_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../../data/timetable-data.json')
 
+function coerceEvents(exams) {
+  if (!Array.isArray(exams)) return exams
+  return exams.map(e => ({
+    id:             e.id             || randomUUID(),
+    label:          e.label          ?? '',
+    date:           e.date           ?? '',
+    time:           e.time           ?? null,
+    type:           e.type           || 'exam',
+    details:        e.details        ?? '',
+    announcementId: e.announcementId ?? null,
+  }))
+}
+
 export async function getData() {
   try {
     const raw = await readFile(DATA_PATH, 'utf-8')
-    return JSON.parse(raw)
+    const data = JSON.parse(raw)
+    data.exams = coerceEvents(data.exams)
+    return data
   } catch {
     return { ...SEED, updatedAt: null, updatedBy: null }
   }
