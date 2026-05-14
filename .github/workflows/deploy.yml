@@ -9,45 +9,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Load SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Add server to known hosts
-        run: ssh-keyscan -H hackclub.app >> ~/.ssh/known_hosts
-
-      - name: Set target env
-        id: env
+      - name: Trigger deploy webhook
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "dir=~/timetable"     >> $GITHUB_OUTPUT
-            echo "pm2=timetable"       >> $GITHUB_OUTPUT
+            URL="https://timetable.edmundlim.systems/api/deploy"
           else
-            echo "dir=~/timetable-dev" >> $GITHUB_OUTPUT
-            echo "pm2=timetable-dev"   >> $GITHUB_OUTPUT
+            URL="https://testing.timetable.edmundlim.systems/api/deploy"
           fi
 
-      - name: Deploy to Hack Club server
-        run: |
-          TARGET="${{ steps.env.outputs.dir }}"
-          PM2="${{ steps.env.outputs.pm2 }}"
-
-          rsync -az --delete \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='data' \
-            --exclude='.env' \
-            -e "ssh -o StrictHostKeyChecking=no" \
-            ./ "edmundlim@hackclub.app:$TARGET/"
-
-          ssh edmundlim@hackclub.app "
-            export NVM_DIR=\$HOME/.nvm && . \$NVM_DIR/nvm.sh
-            cd $TARGET && npm install --omit=dev
-            pm2 describe $PM2 > /dev/null 2>&1 \
-              && pm2 restart $PM2 \
-              || pm2 start ecosystem.config.cjs --name $PM2
-            pm2 save
-          "
+          curl -sf -X POST "$URL" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_SECRET }}" \
+            -H "Content-Type: application/json"

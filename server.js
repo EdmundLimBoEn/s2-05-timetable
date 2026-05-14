@@ -10,6 +10,7 @@ import loginHandler     from './api/login.js'
 import logoutHandler    from './api/logout.js'
 import meHandler        from './api/me.js'
 import versionHandler   from './api/version.js'
+import deployHandler    from './api/deploy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3000
@@ -24,6 +25,7 @@ app.post('/api/login',       (req, res) => loginHandler(req, res))
 app.post('/api/logout',      (req, res) => logoutHandler(req, res))
 app.get ('/api/me',          (req, res) => meHandler(req, res))
 app.get ('/api/version',     (req, res) => versionHandler(req, res))
+app.post('/api/deploy',      (req, res) => deployHandler(req, res))
 
 // /admin and /admin/ both serve admin/index.html
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')))
