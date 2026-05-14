@@ -263,6 +263,12 @@ function renderEvents() {
     dateInp.value = ev.date
     dateInp.addEventListener('change', () => { ev.date = dateInp.value })
 
+    const timeInp = document.createElement('input')
+    timeInp.type = 'time'
+    timeInp.className = 'exam-time-input'
+    timeInp.value = ev.time || ''
+    timeInp.addEventListener('change', () => { ev.time = timeInp.value || null })
+
     const delBtn = document.createElement('button')
     delBtn.className = 'btn danger small'
     delBtn.textContent = '✕'
@@ -274,6 +280,7 @@ function renderEvents() {
     topRow.appendChild(typeSel)
     topRow.appendChild(labelInp)
     topRow.appendChild(dateInp)
+    topRow.appendChild(timeInp)
     topRow.appendChild(delBtn)
     card.appendChild(topRow)
 
@@ -703,6 +710,7 @@ document.getElementById('saveEventsBtn').addEventListener('click', saveEvents)
 document.getElementById('addEventBtn').addEventListener('click', () => {
   const label   = document.getElementById('eventLabel').value.trim()
   const date    = document.getElementById('eventDate').value
+  const time    = document.getElementById('eventTime').value || null
   const type    = document.getElementById('eventType').value
   const details = document.getElementById('eventDetails').value.trim()
   const addToAnnouncement = document.getElementById('eventAddToAnnouncement').checked
@@ -710,12 +718,13 @@ document.getElementById('addEventBtn').addEventListener('click', () => {
   if (!label) { showToast('Label is required', 'error'); return }
   if (!date)  { showToast('Date is required', 'error'); return }
 
-  const ev = { label, date, type, details, id: '', announcementId: null }
+  const ev = { label, date, time, type, details, id: '', announcementId: null }
   if (addToAnnouncement) ev.addToAnnouncement = true
   editingData.exams.push(ev)
 
   document.getElementById('eventLabel').value = ''
   document.getElementById('eventDate').value  = ''
+  document.getElementById('eventTime').value  = ''
   document.getElementById('eventDetails').value = ''
   document.getElementById('eventAddToAnnouncement').checked = false
   renderEvents()

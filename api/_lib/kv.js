@@ -13,6 +13,7 @@ function coerceEvents(exams) {
     id:             e.id             || randomUUID(),
     label:          e.label          ?? '',
     date:           e.date           ?? '',
+    time:           e.time           ?? null,
     type:           e.type           || 'exam',
     details:        e.details        ?? '',
     announcementId: e.announcementId ?? null,
