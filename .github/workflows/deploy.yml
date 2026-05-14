@@ -12,11 +12,12 @@ jobs:
       - name: Trigger deploy webhook
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            URL="https://timetable.edmundlim.systems/api/deploy"
+            BODY='{}'
           else
-            URL="https://testing.timetable.edmundlim.systems/api/deploy"
+            BODY='{"branch":"dev","pm2":"timetable-dev"}'
           fi
 
-          curl -sf -X POST "$URL" \
+          curl -sf -X POST "https://timetable.edmundlim.systems/api/deploy" \
             -H "Authorization: Bearer ${{ secrets.DEPLOY_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d "$BODY"
