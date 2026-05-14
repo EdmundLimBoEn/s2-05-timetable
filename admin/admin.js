@@ -57,7 +57,7 @@ async function init() {
 
   show('dashboard')
   renderTimetable()
-  renderExams()
+  renderEvents()
   renderAnnouncements()
   renderOverrides()
   renderHoursToggle()
@@ -213,50 +213,87 @@ function validateAll() {
   return allValid
 }
 
-// ── Exams renderer ────────────────────────────────────────────
-function renderExams() {
-  const container = document.getElementById('examsList')
+// ── Events renderer ───────────────────────────────────────────
+const EVENT_TYPE_LABELS = { exam: 'EXAM', event: 'EVENT', homework: 'HW' }
+
+function renderEvents() {
+  const container = document.getElementById('eventsList')
   if (!container) return
-  const exams = editingData.exams || []
+  const events = editingData.exams || []
   container.innerHTML = ''
 
-  if (!exams.length) {
+  if (!events.length) {
     const empty = document.createElement('p')
     empty.className = 'exams-empty'
-    empty.textContent = 'No exams scheduled. Click + ADD EXAM to add one.'
+    empty.textContent = 'No events scheduled. Use the form above to add one.'
     container.appendChild(empty)
     return
   }
 
-  exams.forEach((exam, i) => {
-    const row = document.createElement('div')
-    row.className = 'exam-row'
+  const sorted = [...events].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+  sorted.forEach(ev => {
+    const i = editingData.exams.indexOf(ev)
+    const card = document.createElement('div')
+    card.className = 'event-card'
+
+    const topRow = document.createElement('div')
+    topRow.className = 'event-card-top'
+
+    const typeSel = document.createElement('select')
+    typeSel.className = 'event-type-select annc-cat-select'
+    ;['exam', 'event', 'homework'].forEach(t => {
+      const opt = document.createElement('option')
+      opt.value = t
+      opt.textContent = t.toUpperCase()
+      if (t === (ev.type || 'exam')) opt.selected = true
+      typeSel.appendChild(opt)
+    })
+    typeSel.addEventListener('change', () => { ev.type = typeSel.value })
 
     const labelInp = document.createElement('input')
     labelInp.type = 'text'
     labelInp.className = 'exam-label-input'
     labelInp.placeholder = 'e.g. T2 CA · MATH'
-    labelInp.value = exam.label
-    labelInp.addEventListener('input', () => { exam.label = labelInp.value })
+    labelInp.value = ev.label
+    labelInp.addEventListener('input', () => { ev.label = labelInp.value })
 
     const dateInp = document.createElement('input')
     dateInp.type = 'date'
     dateInp.className = 'exam-date-input'
-    dateInp.value = exam.date
-    dateInp.addEventListener('change', () => { exam.date = dateInp.value })
+    dateInp.value = ev.date
+    dateInp.addEventListener('change', () => { ev.date = dateInp.value })
 
     const delBtn = document.createElement('button')
     delBtn.className = 'btn danger small'
     delBtn.textContent = '✕'
     delBtn.addEventListener('click', () => {
       editingData.exams.splice(i, 1)
-      renderExams()
+      renderEvents()
     })
 
-    row.appendChild(labelInp)
-    row.appendChild(dateInp)
-    row.appendChild(delBtn)
-    container.appendChild(row)
+    topRow.appendChild(typeSel)
+    topRow.appendChild(labelInp)
+    topRow.appendChild(dateInp)
+    topRow.appendChild(delBtn)
+    card.appendChild(topRow)
+
+    const detailsInp = document.createElement('textarea')
+    detailsInp.className = 'annc-body-input event-details-input'
+    detailsInp.placeholder = 'Details (optional)'
+    detailsInp.maxLength = 2000
+    detailsInp.rows = 2
+    detailsInp.value = ev.details || ''
+    detailsInp.addEventListener('input', () => { ev.details = detailsInp.value })
+    card.appendChild(detailsInp)
+
+    if (ev.announcementId) {
+      const linked = document.createElement('span')
+      linked.className = 'event-linked-chip'
+      linked.textContent = '⟷ LINKED TO ANNOUNCEMENT'
+      card.appendChild(linked)
+    }
+
+    container.appendChild(card)
   })
 }
 
@@ -273,6 +310,8 @@ function applySaveResult(result) {
   }
   if (Array.isArray(result.exams)) {
     serverData = { ...serverData, exams: result.exams }
+    editingData.exams = result.exams
+    renderEvents()
   }
   if (Array.isArray(result.overrides)) {
     serverData = { ...serverData, overrides: result.overrides }
@@ -328,9 +367,9 @@ async function saveTimetable() {
   }
 }
 
-async function saveExams() {
-  const btn    = document.getElementById('saveExamsBtn')
-  const status = document.getElementById('saveExamsStatus')
+async function saveEvents() {
+  const btn    = document.getElementById('saveEventsBtn')
+  const status = document.getElementById('saveEventsStatus')
 
   btn.disabled = true
   status.textContent = 'Saving...'
@@ -346,7 +385,7 @@ async function saveExams() {
     status.textContent = 'Saved!'
     status.className = 'save-status ok'
     showSaveBar('saved')
-    showToast('Exams saved ✓', 'success')
+    showToast('Events saved ✓', 'success')
   } catch (err) {
     status.textContent = err.message
     status.className = 'save-status err'
@@ -615,7 +654,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     hide('loginSection')
     show('dashboard')
     renderTimetable()
-    renderExams()
+    renderEvents()
     renderAnnouncements()
     renderOverrides()
     renderHoursToggle()
@@ -639,7 +678,7 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     tab.classList.add('active')
     const name = tab.dataset.tab
     document.getElementById('tabTimetable').classList.toggle('hidden', name !== 'timetable')
-    document.getElementById('tabExams').classList.toggle('hidden', name !== 'exams')
+    document.getElementById('tabEvents').classList.toggle('hidden', name !== 'events')
     document.getElementById('tabAnnouncements').classList.toggle('hidden', name !== 'announcements')
     document.getElementById('tabOverrides').classList.toggle('hidden', name !== 'overrides')
   })
@@ -660,10 +699,27 @@ document.querySelectorAll('.week-btn[data-week]').forEach(btn => {
 
 // ── Save buttons ──────────────────────────────────────────────
 document.getElementById('saveTimetableBtn').addEventListener('click', saveTimetable)
-document.getElementById('saveExamsBtn').addEventListener('click', saveExams)
-document.getElementById('addExamBtn').addEventListener('click', () => {
-  editingData.exams.push({ label: '', date: '' })
-  renderExams()
+document.getElementById('saveEventsBtn').addEventListener('click', saveEvents)
+document.getElementById('addEventBtn').addEventListener('click', () => {
+  const label   = document.getElementById('eventLabel').value.trim()
+  const date    = document.getElementById('eventDate').value
+  const type    = document.getElementById('eventType').value
+  const details = document.getElementById('eventDetails').value.trim()
+  const addToAnnouncement = document.getElementById('eventAddToAnnouncement').checked
+
+  if (!label) { showToast('Label is required', 'error'); return }
+  if (!date)  { showToast('Date is required', 'error'); return }
+
+  const ev = { label, date, type, details, id: '', announcementId: null }
+  if (addToAnnouncement) ev.addToAnnouncement = true
+  editingData.exams.push(ev)
+
+  document.getElementById('eventLabel').value = ''
+  document.getElementById('eventDate').value  = ''
+  document.getElementById('eventDetails').value = ''
+  document.getElementById('eventAddToAnnouncement').checked = false
+  renderEvents()
+  saveEvents()
 })
 document.getElementById('hoursShort').addEventListener('click',    () => saveExtendedHours(false))
 document.getElementById('hoursExtended').addEventListener('click', () => saveExtendedHours(true))
@@ -686,14 +742,36 @@ document.getElementById('addOvrBtn').addEventListener('click', async () => {
   await saveOverrides()
 })
 
+// Toggle date row visibility + auto-check addToCalendar when category changes
+const NON_GENERAL_CATS = new Set(['exam', 'event', 'homework'])
+document.getElementById('anncCategory').addEventListener('change', () => {
+  const cat = document.getElementById('anncCategory').value
+  const row = document.getElementById('anncDateRow')
+  const isNonGeneral = NON_GENERAL_CATS.has(cat)
+  row.classList.toggle('hidden', !isNonGeneral)
+  if (isNonGeneral) {
+    document.getElementById('anncAddToCalendar').checked = true
+  }
+})
+
 document.getElementById('addAnncBtn').addEventListener('click', async () => {
-  const title = document.getElementById('anncTitle').value.trim()
+  const title    = document.getElementById('anncTitle').value.trim()
   if (!title) { showToast('Title is required', 'error'); return }
   const body     = document.getElementById('anncBody').value.trim()
   const category = document.getElementById('anncCategory').value
-  editingData.announcements.push({ title, body, category })
+  const isNonGeneral = NON_GENERAL_CATS.has(category)
+  const eventDate    = isNonGeneral ? document.getElementById('anncEventDate').value || null : null
+  const addToCalendar = isNonGeneral && document.getElementById('anncAddToCalendar').checked
+
+  const annc = { title, body, category, eventDate }
+  if (addToCalendar) annc.addToCalendar = true
+
+  editingData.announcements.push(annc)
   document.getElementById('anncTitle').value = ''
   document.getElementById('anncBody').value  = ''
+  document.getElementById('anncEventDate').value = ''
+  document.getElementById('anncDateRow').classList.add('hidden')
+  document.getElementById('anncCategory').value = 'general'
   renderAnnouncements()
   await saveAnnouncements()
 })

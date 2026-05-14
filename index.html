@@ -109,6 +109,7 @@
         <div class="tog-group" id="bottomPaneToggle" style="display:none">
           <div class="tog-pill" id="pillBottomPane"></div>
           <button class="tog-btn" id="btnPaneJournal" onclick="setBottomPane('journal')" aria-pressed="true">JOURNAL</button>
+          <button class="tog-btn" id="btnPaneEvents" onclick="setBottomPane('events')" aria-pressed="false">EVENTS</button>
           <button class="tog-btn" id="btnPaneAnncs" onclick="setBottomPane('anncs')" aria-pressed="false">ANNCS</button>
         </div>
       </div>
@@ -123,6 +124,10 @@
         <div class="bottom-pane-hd">JOURNAL</div>
         <textarea id="journalText" class="journal-textarea" placeholder="Notes, todos, thoughts…" maxlength="50000"></textarea>
         <span class="bottom-hint">Saved on this device</span>
+      </div>
+      <div class="bottom-pane" id="eventsPane">
+        <div class="bottom-pane-hd">EVENTS &amp; CALENDAR</div>
+        <div id="eventsCalList" class="events-list"></div>
       </div>
       <div class="bottom-pane" id="anncsPane">
         <div class="bottom-pane-hd">ANNOUNCEMENTS</div>
@@ -250,6 +255,32 @@
       <div class="settings-section">
         <div class="settings-section-hd">THIS WEEK</div>
         <div class="stats-grid" id="statsGrid"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-hd">CALENDAR PANE</div>
+        <p class="settings-hint">Choose which event types appear in the Events pane.</p>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Exams</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="calFilter-exam" data-cal-filter="exam" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Events</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="calFilter-event" data-cal-filter="event" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+        <label class="demo-toggle-row">
+          <span class="demo-toggle-label">Homework</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="calFilter-homework" data-cal-filter="homework" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
       </div>
 
       <div class="settings-section">
