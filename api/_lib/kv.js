@@ -1,5 +1,4 @@
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
@@ -27,9 +26,11 @@ export async function setData(timetable, exams, announcements, overrides, extend
     updatedAt: new Date().toISOString(),
     updatedBy: username
   }
-  await mkdir(dirname(DATA_PATH), { recursive: true })
-  // Atomic write: write to tmp file then rename to avoid partial reads
-  const tmp = join(tmpdir(), `timetable-${randomUUID()}.json`)
+  const dataDir = dirname(DATA_PATH)
+  await mkdir(dataDir, { recursive: true })
+  // Atomic write: tmp must be on the same filesystem as destination —
+  // rename() across mounts fails with EXDEV on Linux (e.g. /tmp on tmpfs).
+  const tmp = join(dataDir, `.timetable-${randomUUID()}.json`)
   await writeFile(tmp, JSON.stringify(data), 'utf-8')
   await rename(tmp, DATA_PATH)
   return data
