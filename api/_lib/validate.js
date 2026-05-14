@@ -72,6 +72,9 @@ export function validateData(body) {
       if (e.details !== undefined && (typeof e.details !== 'string' || e.details.length > 2000)) {
         errors.push(`exams[${i}].details must be a string ≤2000 chars`)
       }
+      if (e.time !== undefined && e.time !== null && !/^\d{2}:\d{2}$/.test(e.time)) {
+        errors.push(`exams[${i}].time must be HH:MM or null`)
+      }
     })
   }
 

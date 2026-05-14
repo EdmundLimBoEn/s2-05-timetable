@@ -288,11 +288,13 @@ html, body {
 }
 .exam-label-input { flex: 1; }
 .exam-date-input { width: 145px; flex-shrink: 0; }
-.exam-label-input:focus, .exam-date-input:focus {
+.exam-time-input { width: 105px; flex-shrink: 0; }
+.exam-label-input:focus, .exam-date-input:focus, .exam-time-input:focus {
   outline: 1px solid rgba(255,59,59,0.35);
   border-color: rgba(255,59,59,0.25);
 }
-.exam-date-input::-webkit-calendar-picker-indicator { filter: invert(0.55); cursor: pointer; }
+.exam-date-input::-webkit-calendar-picker-indicator,
+.exam-time-input::-webkit-calendar-picker-indicator { filter: invert(0.55); cursor: pointer; }
 
 .exams-empty {
   font-size: 0.7rem;

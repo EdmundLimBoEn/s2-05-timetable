@@ -688,11 +688,12 @@ function renderEvents() {
 
     const card = document.createElement('div')
     card.className = 'event-cal-card' + (isPast ? ' past' : '')
+    const timeStr = ev.time ? ` · ${ev.time}` : ''
     card.innerHTML = `
       <div class="event-cal-top">
         <span class="events-cat-pill ${esc(ev.type || 'exam')}">${esc((ev.type || 'exam').toUpperCase())}</span>
         <span class="event-cal-label">${esc(ev.label)}</span>
-        <span class="event-cal-date">${esc(ev.date)}</span>
+        <span class="event-cal-date">${esc(ev.date)}${esc(timeStr)}</span>
         <span class="event-cal-days ${isPast ? 'past' : ''}">${dayLabel}</span>
       </div>
       ${ev.details ? `<div class="event-cal-details">${esc(ev.details).replace(/\n/g, '<br>')}</div>` : ''}
@@ -729,6 +730,14 @@ function scheduleEventNotifs() {
     const pref = eventNotifPrefs[ev.id]
     if (!pref || pref === 'none') continue
     const eventMs = new Date(ev.date).getTime()
+    // Build a DateTime for the event using its time field (or midnight if absent)
+    const eventDt = new Date(ev.date)
+    if (ev.time) {
+      const [h, m] = ev.time.split(':').map(Number)
+      eventDt.setHours(h, m, 0, 0)
+    }
+    const eventDtMs = eventDt.getTime()
+
     let fireMs
     if (pref === '3d') {
       const d = new Date(ev.date)
@@ -736,7 +745,7 @@ function scheduleEventNotifs() {
       d.setHours(9, 0, 0, 0)
       fireMs = d.getTime()
     } else if (pref === '30m') {
-      fireMs = eventMs - 30 * 60_000
+      fireMs = eventDtMs - 30 * 60_000
     } else continue
     const delay = fireMs - now
     if (delay <= 0) continue
@@ -744,8 +753,8 @@ function scheduleEventNotifs() {
       const daysAway = Math.round((eventMs - Date.now()) / 86400000)
       new Notification(`${ev.label}`, {
         body: pref === '30m'
-          ? `Starting in 30 minutes · ${ev.date}`
-          : `In ${daysAway} day${daysAway !== 1 ? 's' : ''} · ${ev.date}`,
+          ? `Starting in 30 minutes · ${ev.date}${ev.time ? ' ' + ev.time : ''}`
+          : `In ${daysAway} day${daysAway !== 1 ? 's' : ''} · ${ev.date}${ev.time ? ' ' + ev.time : ''}`,
         icon: './icon.svg',
         tag:  `event-${ev.id}`
       })
