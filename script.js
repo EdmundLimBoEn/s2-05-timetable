@@ -714,10 +714,11 @@ function renderEvents() {
       </div>
       ${ev.details ? `<div class="event-cal-details">${esc(ev.details).replace(/\n/g, '<br>')}</div>` : ''}
       <div class="event-notif-row">
-        <span class="event-notif-label">REMIND</span>
+        <span class="event-notif-label" id="notif-label-${esc(ev.id)}">REMIND</span>
         <input class="event-notif-amount" type="number" min="1" max="9999"
-               placeholder="—" value="${esc(savedAmount)}" title="Leave blank for no reminder">
-        <select class="event-notif-unit">
+               placeholder="—" value="${esc(savedAmount)}" title="Leave blank for no reminder"
+               aria-labelledby="notif-label-${esc(ev.id)}">
+        <select class="event-notif-unit" aria-labelledby="notif-label-${esc(ev.id)}">
           <option value="minutes"${savedUnit === 'minutes' ? ' selected' : ''}>min before</option>
           <option value="hours"${savedUnit === 'hours' ? ' selected' : ''}>hr before</option>
           <option value="days"${savedUnit === 'days' ? ' selected' : ''}>days before</option>
