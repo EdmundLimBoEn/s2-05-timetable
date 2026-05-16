@@ -1424,7 +1424,22 @@ tr.day-absent td .cell:not(.empty) {
   flex-shrink: 0;
 }
 
-.event-notif-sel {
+.event-notif-amount {
+  width: 52px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  padding: 2px 5px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+  flex-shrink: 0;
+}
+.event-notif-amount:focus { outline: none; border-color: rgba(255,128,200,0.4); }
+.event-notif-amount::-webkit-inner-spin-button { display: none; }
+
+.event-notif-unit {
   font-family: 'Space Mono', monospace;
   font-size: 0.58rem;
   padding: 2px 5px;
@@ -1435,7 +1450,7 @@ tr.day-absent td .cell:not(.empty) {
   cursor: pointer;
   letter-spacing: 0.03em;
 }
-.event-notif-sel:focus { outline: none; border-color: rgba(255,128,200,0.4); }
+.event-notif-unit:focus { outline: none; border-color: rgba(255,128,200,0.4); }
 
 /* ── B17: Reduced motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

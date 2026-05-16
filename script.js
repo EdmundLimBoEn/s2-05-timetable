@@ -295,8 +295,22 @@ let EXAMS = [
   { id: '5', label: 'T2 CA · CL',   date: '2026-05-20', type: 'exam', details: '', announcementId: null },
 ]
 
-// Per-event notification preferences: { [eventId]: 'none' | '3d:HH:MM' | '30m' }
-let eventNotifPrefs = JSON.parse(localStorage.getItem('event-notif-prefs') || '{}')
+// Per-event notification preferences: { [eventId]: { amount: number, unit: 'minutes'|'hours'|'days' } }
+// amount = 0 or absent → no reminder
+function _migrateEventNotifPrefs(raw) {
+  const out = {}
+  for (const [id, v] of Object.entries(raw)) {
+    if (!v || v === 'none') continue
+    if (typeof v === 'object' && v.amount) { out[id] = v; continue }
+    // legacy strings
+    if (v === '30m') out[id] = { amount: 30, unit: 'minutes' }
+    else if (v === '3d') out[id] = { amount: 3, unit: 'days' }
+  }
+  return out
+}
+let eventNotifPrefs = _migrateEventNotifPrefs(
+  JSON.parse(localStorage.getItem('event-notif-prefs') || '{}')
+)
 let eventNotifTimeouts = []
 
 // Calendar filter: which event types are shown in the events pane
@@ -684,7 +698,9 @@ function renderEvents() {
       : daysAway === 1 ? 'TOMORROW'
       : `IN ${daysAway} DAYS`
 
-    const savedPref = eventNotifPrefs[ev.id] || 'none'
+    const savedPref = eventNotifPrefs[ev.id] || null
+    const savedAmount = savedPref ? String(savedPref.amount) : ''
+    const savedUnit   = savedPref ? savedPref.unit : 'minutes'
 
     const card = document.createElement('div')
     card.className = 'event-cal-card' + (isPast ? ' past' : '')
@@ -698,20 +714,32 @@ function renderEvents() {
       </div>
       ${ev.details ? `<div class="event-cal-details">${esc(ev.details).replace(/\n/g, '<br>')}</div>` : ''}
       <div class="event-notif-row">
-        <span class="event-notif-label">REMIND ME:</span>
-        <select class="event-notif-sel" data-event-id="${esc(ev.id)}">
-          <option value="none"${savedPref === 'none' ? ' selected' : ''}>No reminder</option>
-          <option value="3d"${savedPref === '3d' ? ' selected' : ''}>3 days before (9:00 AM)</option>
-          <option value="30m"${savedPref === '30m' ? ' selected' : ''}>30 min before</option>
+        <span class="event-notif-label" id="notif-label-${esc(ev.id)}">REMIND</span>
+        <input class="event-notif-amount" type="number" min="1" max="9999"
+               placeholder="—" value="${esc(savedAmount)}" title="Leave blank for no reminder"
+               aria-labelledby="notif-label-${esc(ev.id)}">
+        <select class="event-notif-unit" aria-labelledby="notif-label-${esc(ev.id)}">
+          <option value="minutes"${savedUnit === 'minutes' ? ' selected' : ''}>min before</option>
+          <option value="hours"${savedUnit === 'hours' ? ' selected' : ''}>hr before</option>
+          <option value="days"${savedUnit === 'days' ? ' selected' : ''}>days before</option>
         </select>
       </div>
     `
 
-    card.querySelector('.event-notif-sel').addEventListener('change', e => {
-      eventNotifPrefs[ev.id] = e.target.value
+    const amountInp = card.querySelector('.event-notif-amount')
+    const unitSel   = card.querySelector('.event-notif-unit')
+    const savePref  = () => {
+      const amount = parseInt(amountInp.value)
+      if (!amount || amount < 1) {
+        delete eventNotifPrefs[ev.id]
+      } else {
+        eventNotifPrefs[ev.id] = { amount, unit: unitSel.value }
+      }
       localStorage.setItem('event-notif-prefs', JSON.stringify(eventNotifPrefs))
       scheduleEventNotifs()
-    })
+    }
+    amountInp.addEventListener('change', savePref)
+    unitSel.addEventListener('change', savePref)
 
     container.appendChild(card)
   }
@@ -722,39 +750,33 @@ function clearEventNotifs() {
   eventNotifTimeouts = []
 }
 
+const UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 }
+
 function scheduleEventNotifs() {
   clearEventNotifs()
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   const now = Date.now()
   for (const ev of EXAMS) {
     const pref = eventNotifPrefs[ev.id]
-    if (!pref || pref === 'none') continue
-    const eventMs = new Date(ev.date).getTime()
-    // Build a DateTime for the event using its time field (or midnight if absent)
+    if (!pref || !pref.amount) continue
+
     const eventDt = new Date(ev.date)
     if (ev.time) {
       const [h, m] = ev.time.split(':').map(Number)
       eventDt.setHours(h, m, 0, 0)
     }
-    const eventDtMs = eventDt.getTime()
-
-    let fireMs
-    if (pref === '3d') {
-      const d = new Date(ev.date)
-      d.setDate(d.getDate() - 3)
-      d.setHours(9, 0, 0, 0)
-      fireMs = d.getTime()
-    } else if (pref === '30m') {
-      fireMs = eventDtMs - 30 * 60_000
-    } else continue
-    const delay = fireMs - now
+    const offsetMs = pref.amount * (UNIT_MS[pref.unit] || 60_000)
+    const fireMs   = eventDt.getTime() - offsetMs
+    const delay    = fireMs - now
     if (delay <= 0) continue
+
+    const unitLabel = pref.unit === 'minutes' ? `${pref.amount} min`
+                    : pref.unit === 'hours'   ? `${pref.amount} hr`
+                    : `${pref.amount} day${pref.amount !== 1 ? 's' : ''}`
+
     eventNotifTimeouts.push(setTimeout(() => {
-      const daysAway = Math.round((eventMs - Date.now()) / 86400000)
-      new Notification(`${ev.label}`, {
-        body: pref === '30m'
-          ? `Starting in 30 minutes · ${ev.date}${ev.time ? ' ' + ev.time : ''}`
-          : `In ${daysAway} day${daysAway !== 1 ? 's' : ''} · ${ev.date}${ev.time ? ' ' + ev.time : ''}`,
+      new Notification(ev.label, {
+        body: `In ${unitLabel} · ${ev.date}${ev.time ? ' ' + ev.time : ''}`,
         icon: './icon.svg',
         tag:  `event-${ev.id}`
       })

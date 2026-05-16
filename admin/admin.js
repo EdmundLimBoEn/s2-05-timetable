@@ -507,10 +507,18 @@ function renderOverrides() {
     const header = document.createElement('div')
     header.className = 'ovr-card-header'
     const typeClass = ovr.type === 'holiday' ? 'holiday' : 'custom'
-    header.innerHTML =
-      `<span class="ovr-type-pill ${typeClass}">${ovr.type.toUpperCase()}</span>` +
-      `<span class="ovr-card-date">${ovr.date}</span>` +
-      `<span class="ovr-card-label">${ovr.label}</span>`
+    const typePill = document.createElement('span')
+    typePill.className = `ovr-type-pill ${typeClass}`
+    typePill.textContent = ovr.type.toUpperCase()
+    const dateSpan = document.createElement('span')
+    dateSpan.className = 'ovr-card-date'
+    dateSpan.textContent = ovr.date
+    const labelSpan = document.createElement('span')
+    labelSpan.className = 'ovr-card-label'
+    labelSpan.textContent = ovr.label
+    header.appendChild(typePill)
+    header.appendChild(dateSpan)
+    header.appendChild(labelSpan)
     body.appendChild(header)
 
     // For custom overrides, show an inline block editor
