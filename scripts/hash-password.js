@@ -12,7 +12,9 @@ const password = await new Promise((resolve) => {
     rl.close()
     resolve(answer)
   })
-  // Hide input if running in a TTY
+  // Suppress echo by patching readline's private _writeToOutput.
+  // This relies on a Node.js internal; if it breaks on a future runtime upgrade,
+  // replace with a library like 'read' or 'prompts' for proper no-echo prompting.
   if (process.stdin.isTTY) rl.stdoutMuted = true
   rl._writeToOutput = (s) => { if (!rl.stdoutMuted) process.stderr.write(s) }
 })
