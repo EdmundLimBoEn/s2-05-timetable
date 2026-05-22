@@ -225,7 +225,7 @@ console.log('\n══ ADMIN PANEL ══')
 
   await safe('T16: Username chip correct', async () => {
     const chip = await page.locator('#adminUser').innerText()
-    log('T16: Username chip correct', chip === 'edmund', `"${chip}"`)
+    log('T16: Username chip correct', chip === CREDS.username, `"${chip}"`)
   })
 
   await safe('T17: ANNCS tab switches', async () => {
