@@ -91,9 +91,29 @@
           </select>
           <input class="exam-label-input" id="eventLabel" type="text" placeholder="Label (e.g. T2 CA · MATH)" maxlength="100">
           <input class="exam-date-input"  id="eventDate"  type="date">
-          <input class="exam-time-input"  id="eventTime"  type="time" placeholder="Time (optional)">
+          <input class="exam-time-input"  id="eventTime"  type="time" aria-label="Start time (optional)">
+          <input class="exam-time-input"  id="eventEndTime" type="time" aria-label="End time (optional)" title="End time (optional — used for auto-remove 'end' anchor)">
         </div>
         <textarea class="annc-body-input" id="eventDetails" placeholder="Details (optional)" maxlength="2000" rows="2"></textarea>
+        <div class="event-ar-control-row">
+          <span class="ar-label">AUTO-REMOVE</span>
+          <select class="annc-cat-select" id="eventAutoRemove" aria-label="Auto-remove setting">
+            <option value="never">NEVER</option>
+            <option value="custom">CUSTOM…</option>
+          </select>
+          <div class="ar-options hidden" id="eventArOptions">
+            <input class="span-input" id="eventArOffset" type="number" min="0" max="10080" value="30" aria-label="Offset in minutes">
+            <span class="ar-unit">min</span>
+            <select class="annc-cat-select" id="eventArDirection" aria-label="Before or after anchor">
+              <option value="before">BEFORE</option>
+              <option value="after">AFTER</option>
+            </select>
+            <select class="annc-cat-select" id="eventArAnchor" aria-label="Anchor to event start or end">
+              <option value="start">START</option>
+              <option value="end">END</option>
+            </select>
+          </div>
+        </div>
         <div class="event-add-footer">
           <label class="event-link-label">
             <input type="checkbox" id="eventAddToAnnouncement">

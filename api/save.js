@@ -36,9 +36,11 @@ export default async function handler(req, res) {
     label:          e.label,
     date:           e.date,
     time:           e.time           ?? null,
+    endTime:        e.endTime        ?? null,
     type:           e.type           || 'exam',
     details:        e.details        ?? '',
     announcementId: e.announcementId ?? null,
+    autoRemove:     e.autoRemove     ?? null,
     _addToAnnouncement: e.addToAnnouncement ?? false,
   }))
 
