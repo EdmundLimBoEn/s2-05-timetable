@@ -13,6 +13,6 @@ if (!password) {
 const hash = await bcrypt.hash(password, 10)
 console.log('\nBcrypt hash:')
 console.log(hash)
-console.log('\nPaste into ADMINS_JSON (Vercel env var):')
+console.log('\nPaste into ADMINS_JSON in ~/.env:')
 console.log(JSON.stringify([{ username: 'YOUR_USERNAME', passwordHash: hash }], null, 2))
 console.log('\nFor multiple admins, add objects to the array.')
