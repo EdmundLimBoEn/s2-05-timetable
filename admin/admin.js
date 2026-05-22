@@ -354,7 +354,7 @@ function renderEvents() {
       if (arSel.value === 'never') {
         ev.autoRemove = null
       } else {
-        const offset = parseInt(offsetInp.value) || 0
+        const offset = Math.min(10080, Math.abs(parseInt(offsetInp.value, 10) || 0))
         ev.autoRemove = {
           enabled: true,
           anchor: anchorSel.value,
@@ -819,7 +819,7 @@ document.getElementById('addEventBtn').addEventListener('click', () => {
 
   let autoRemove = null
   if (document.getElementById('eventAutoRemove').value === 'custom') {
-    const offset    = parseInt(document.getElementById('eventArOffset').value) || 0
+    const offset    = Math.min(10080, Math.abs(parseInt(document.getElementById('eventArOffset').value, 10) || 0))
     const direction = document.getElementById('eventArDirection').value
     const anchor    = document.getElementById('eventArAnchor').value
     autoRemove = { enabled: true, anchor, offsetMinutes: direction === 'before' ? -offset : offset }

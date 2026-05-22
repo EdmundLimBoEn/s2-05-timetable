@@ -72,11 +72,11 @@ export function validateData(body) {
       if (e.details !== undefined && (typeof e.details !== 'string' || e.details.length > 2000)) {
         errors.push(`exams[${i}].details must be a string ≤2000 chars`)
       }
-      if (e.time !== undefined && e.time !== null && !/^\d{2}:\d{2}$/.test(e.time)) {
-        errors.push(`exams[${i}].time must be HH:MM or null`)
+      if (e.time !== undefined && e.time !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(e.time)) {
+        errors.push(`exams[${i}].time must be HH:MM (24-hour) or null`)
       }
-      if (e.endTime !== undefined && e.endTime !== null && !/^\d{2}:\d{2}$/.test(e.endTime)) {
-        errors.push(`exams[${i}].endTime must be HH:MM or null`)
+      if (e.endTime !== undefined && e.endTime !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(e.endTime)) {
+        errors.push(`exams[${i}].endTime must be HH:MM (24-hour) or null`)
       }
       if (e.autoRemove !== undefined && e.autoRemove !== null) {
         const ar = e.autoRemove
