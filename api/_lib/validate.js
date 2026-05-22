@@ -75,6 +75,22 @@ export function validateData(body) {
       if (e.time !== undefined && e.time !== null && !/^\d{2}:\d{2}$/.test(e.time)) {
         errors.push(`exams[${i}].time must be HH:MM or null`)
       }
+      if (e.endTime !== undefined && e.endTime !== null && !/^\d{2}:\d{2}$/.test(e.endTime)) {
+        errors.push(`exams[${i}].endTime must be HH:MM or null`)
+      }
+      if (e.autoRemove !== undefined && e.autoRemove !== null) {
+        const ar = e.autoRemove
+        if (typeof ar !== 'object' || Array.isArray(ar)) {
+          errors.push(`exams[${i}].autoRemove must be an object or null`)
+        } else {
+          if (typeof ar.enabled !== 'boolean')
+            errors.push(`exams[${i}].autoRemove.enabled must be boolean`)
+          if (!['start', 'end'].includes(ar.anchor))
+            errors.push(`exams[${i}].autoRemove.anchor must be "start" or "end"`)
+          if (!Number.isInteger(ar.offsetMinutes) || Math.abs(ar.offsetMinutes) > 10080)
+            errors.push(`exams[${i}].autoRemove.offsetMinutes must be an integer within ±10080`)
+        }
+      }
     })
   }
 

@@ -655,5 +655,38 @@ html, body {
 .save-bar-indicator.saving { border-top-color: #ffb700; color: #ffb700; }
 .save-bar-indicator.error  { border-top-color: var(--red); color: var(--red); }
 
+/* ── Auto-remove controls ────────────────────────────────────── */
+.event-ar-control-row,
+.event-ar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ar-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
+
+.ar-unit {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.06em;
+}
+
+.ar-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ar-sel { min-width: 130px; }
+
 /* ── Hidden util ─────────────────────────────────────────────── */
 .hidden { display: none !important; }

@@ -267,7 +267,16 @@ function renderEvents() {
     timeInp.type = 'time'
     timeInp.className = 'exam-time-input'
     timeInp.value = ev.time || ''
+    timeInp.setAttribute('aria-label', 'Start time')
     timeInp.addEventListener('change', () => { ev.time = timeInp.value || null })
+
+    const endTimeInp = document.createElement('input')
+    endTimeInp.type = 'time'
+    endTimeInp.className = 'exam-time-input'
+    endTimeInp.value = ev.endTime || ''
+    endTimeInp.title = 'End time (optional)'
+    endTimeInp.setAttribute('aria-label', 'End time (optional)')
+    endTimeInp.addEventListener('change', () => { ev.endTime = endTimeInp.value || null })
 
     const delBtn = document.createElement('button')
     delBtn.className = 'btn danger small'
@@ -281,6 +290,7 @@ function renderEvents() {
     topRow.appendChild(labelInp)
     topRow.appendChild(dateInp)
     topRow.appendChild(timeInp)
+    topRow.appendChild(endTimeInp)
     topRow.appendChild(delBtn)
     card.appendChild(topRow)
 
@@ -292,6 +302,81 @@ function renderEvents() {
     detailsInp.value = ev.details || ''
     detailsInp.addEventListener('input', () => { ev.details = detailsInp.value })
     card.appendChild(detailsInp)
+
+    // ── Auto-remove row ────────────────────────────────────────
+    const arRow = document.createElement('div')
+    arRow.className = 'event-ar-row'
+
+    const ar = ev.autoRemove || {}
+    const arEnabled = ar.enabled === true
+
+    const arSel = document.createElement('select')
+    arSel.className = 'annc-cat-select ar-sel'
+    arSel.setAttribute('aria-label', 'Auto-remove setting')
+    ;[['never', 'NO AUTO-REMOVE'], ['custom', 'AUTO-REMOVE…']].forEach(([val, txt]) => {
+      const o = document.createElement('option'); o.value = val; o.textContent = txt
+      if ((arEnabled ? 'custom' : 'never') === val) o.selected = true
+      arSel.appendChild(o)
+    })
+
+    const arOptions = document.createElement('div')
+    arOptions.className = 'ar-options' + (arEnabled ? '' : ' hidden')
+
+    const offsetInp = document.createElement('input')
+    offsetInp.type = 'number'; offsetInp.className = 'span-input'
+    offsetInp.min = 0; offsetInp.max = 10080
+    offsetInp.value = Math.abs(ar.offsetMinutes ?? 30)
+    offsetInp.setAttribute('aria-label', 'Offset in minutes')
+
+    const unitSpan = document.createElement('span')
+    unitSpan.className = 'ar-unit'; unitSpan.textContent = 'min'
+
+    const dirSel = document.createElement('select')
+    dirSel.className = 'annc-cat-select'
+    dirSel.setAttribute('aria-label', 'Before or after anchor')
+    const currentDir = (ar.offsetMinutes ?? -30) < 0 ? 'before' : 'after'
+    ;['before', 'after'].forEach(d => {
+      const o = document.createElement('option'); o.value = d; o.textContent = d.toUpperCase()
+      if (d === currentDir) o.selected = true
+      dirSel.appendChild(o)
+    })
+
+    const anchorSel = document.createElement('select')
+    anchorSel.className = 'annc-cat-select'
+    anchorSel.setAttribute('aria-label', 'Anchor to event start or end')
+    ;['start', 'end'].forEach(a => {
+      const o = document.createElement('option'); o.value = a; o.textContent = a.toUpperCase()
+      if ((ar.anchor || 'start') === a) o.selected = true
+      anchorSel.appendChild(o)
+    })
+
+    function syncAr() {
+      if (arSel.value === 'never') {
+        ev.autoRemove = null
+      } else {
+        const offset = parseInt(offsetInp.value) || 0
+        ev.autoRemove = {
+          enabled: true,
+          anchor: anchorSel.value,
+          offsetMinutes: dirSel.value === 'before' ? -offset : offset
+        }
+      }
+    }
+    arSel.addEventListener('change', () => {
+      arOptions.classList.toggle('hidden', arSel.value === 'never')
+      syncAr()
+    })
+    offsetInp.addEventListener('input', syncAr)
+    dirSel.addEventListener('change', syncAr)
+    anchorSel.addEventListener('change', syncAr)
+
+    arOptions.appendChild(offsetInp)
+    arOptions.appendChild(unitSpan)
+    arOptions.appendChild(dirSel)
+    arOptions.appendChild(anchorSel)
+    arRow.appendChild(arSel)
+    arRow.appendChild(arOptions)
+    card.appendChild(arRow)
 
     if (ev.announcementId) {
       const linked = document.createElement('span')
@@ -715,10 +800,16 @@ document.querySelectorAll('.week-btn[data-week]').forEach(btn => {
 // ── Save buttons ──────────────────────────────────────────────
 document.getElementById('saveTimetableBtn').addEventListener('click', saveTimetable)
 document.getElementById('saveEventsBtn').addEventListener('click', saveEvents)
+document.getElementById('eventAutoRemove').addEventListener('change', () => {
+  const isCustom = document.getElementById('eventAutoRemove').value === 'custom'
+  document.getElementById('eventArOptions').classList.toggle('hidden', !isCustom)
+})
+
 document.getElementById('addEventBtn').addEventListener('click', () => {
   const label   = document.getElementById('eventLabel').value.trim()
   const date    = document.getElementById('eventDate').value
   const time    = document.getElementById('eventTime').value || null
+  const endTime = document.getElementById('eventEndTime').value || null
   const type    = document.getElementById('eventType').value
   const details = document.getElementById('eventDetails').value.trim()
   const addToAnnouncement = document.getElementById('eventAddToAnnouncement').checked
@@ -726,15 +817,26 @@ document.getElementById('addEventBtn').addEventListener('click', () => {
   if (!label) { showToast('Label is required', 'error'); return }
   if (!date)  { showToast('Date is required', 'error'); return }
 
-  const ev = { label, date, time, type, details, id: '', announcementId: null }
+  let autoRemove = null
+  if (document.getElementById('eventAutoRemove').value === 'custom') {
+    const offset    = parseInt(document.getElementById('eventArOffset').value) || 0
+    const direction = document.getElementById('eventArDirection').value
+    const anchor    = document.getElementById('eventArAnchor').value
+    autoRemove = { enabled: true, anchor, offsetMinutes: direction === 'before' ? -offset : offset }
+  }
+
+  const ev = { label, date, time, endTime, type, details, id: '', announcementId: null, autoRemove }
   if (addToAnnouncement) ev.addToAnnouncement = true
   editingData.exams.push(ev)
 
-  document.getElementById('eventLabel').value = ''
-  document.getElementById('eventDate').value  = ''
-  document.getElementById('eventTime').value  = ''
+  document.getElementById('eventLabel').value   = ''
+  document.getElementById('eventDate').value    = ''
+  document.getElementById('eventTime').value    = ''
+  document.getElementById('eventEndTime').value = ''
   document.getElementById('eventDetails').value = ''
   document.getElementById('eventAddToAnnouncement').checked = false
+  document.getElementById('eventAutoRemove').value = 'never'
+  document.getElementById('eventArOptions').classList.add('hidden')
   renderEvents()
   saveEvents()
 })
