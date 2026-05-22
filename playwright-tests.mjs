@@ -1,8 +1,11 @@
 import { webkit } from 'playwright'
 
-const BASE  = 'https://testing.timetable.edmundlim.systems'
+const BASE  = process.env.E2E_BASE_URL  || 'https://testing.timetable.edmundlim.systems'
 const ADMIN = `${BASE}/admin`
-const CREDS = { username: 'edmund', password: 'edmundlim' }
+const CREDS = {
+  username: process.env.E2E_USERNAME || 'edmund',
+  password: process.env.E2E_PASSWORD || 'edmundlim',
+}
 
 let passed = 0, failed = 0
 const results = []
@@ -405,22 +408,31 @@ console.log('\n══ CLEANUP ══')
   const page = await ctx.newPage()
   await login(page)
 
+  const TEST_EXAM_LABELS = new Set([
+    "'; DROP TABLE events; --",
+    'Auto-remove test event',
+  ])
+  const TEST_ANNC_TITLES = new Set([
+    'Playwright Test — please ignore',
+    "<script>alert('xss')</script>",
+  ])
+
   await safe('Cleanup: wipe test data', async () => {
-    const result = await page.evaluate(async () => {
+    const result = await page.evaluate(async ({ testExamLabels, testAnncTitles }) => {
       const data = await fetch('/api/admin-data').then(r => r.json())
       const res = await fetch('/api/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           timetable: data.timetable,
-          exams: [],
-          announcements: [],
+          exams: (data.exams || []).filter(e => !testExamLabels.includes(e.label)),
+          announcements: (data.announcements || []).filter(a => !testAnncTitles.includes(a.title)),
           overrides: (data.overrides || []).filter(o => o.date !== '2026-07-04'),
           extendedHours: data.extendedHours || false
         })
       })
       return res.json()
-    })
+    }, { testExamLabels: [...TEST_EXAM_LABELS], testAnncTitles: [...TEST_ANNC_TITLES] })
     log('Cleanup: test data wiped', result.ok === true,
         `anncs=${result.announcements?.length} exams=${result.exams?.length}`)
   })
