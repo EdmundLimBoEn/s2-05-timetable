@@ -26,7 +26,7 @@ function setExtendedHours(extended) {
 
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri']
 
-const ABBREV = {
+const BUILTIN_ABBREV = Object.freeze({
   el:      'EL',
   math:    'MATH',
   sci:     'SCI',
@@ -42,6 +42,39 @@ const ABBREV = {
   brk:     'BREAK',
   empty:   '',
   holiday: 'HOL'
+})
+
+// Rebuilt from BUILTIN_ABBREV + CUSTOM_SUBJECTS on every data refresh
+let ABBREV = { ...BUILTIN_ABBREV }
+
+let CUSTOM_SUBJECTS = []
+
+function installCustomStyles(customs) {
+  CUSTOM_SUBJECTS = Array.isArray(customs) ? customs : []
+  // Rebuild ABBREV from frozen baseline so deleted customs don't linger
+  ABBREV = { ...BUILTIN_ABBREV }
+  for (const s of CUSTOM_SUBJECTS) ABBREV[s.key] = s.abbrev
+
+  let css = ''
+  for (const s of CUSTOM_SUBJECTS) {
+    const r = parseInt(s.color.slice(1, 3), 16)
+    const g = parseInt(s.color.slice(3, 5), 16)
+    const b = parseInt(s.color.slice(5, 7), 16)
+    const [tr, tg, tb] = s.textColor
+      ? [parseInt(s.textColor.slice(1,3),16), parseInt(s.textColor.slice(3,5),16), parseInt(s.textColor.slice(5,7),16)]
+      : [255, 255, 255]
+    css += `:root{--c-${s.key}:${s.color}}`
+    css += `.cell.${s.key}{background:rgba(${r},${g},${b},${s.bgOpacity ?? 0.18})}`
+    css += `.cell.${s.key} .subj{color:rgb(${tr},${tg},${tb})}`
+  }
+
+  let styleEl = document.getElementById('custom-subjects')
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = 'custom-subjects'
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = css
 }
 
 // First Monday of Term 1 2026 (Week 1). Odd/even alternates continuously across all terms.
@@ -1654,6 +1687,8 @@ setTimeout(async () => {
     const remoteOverrides = Array.isArray(remote.overrides) ? remote.overrides : []
     const overridesChanged = JSON.stringify(remoteOverrides) !== JSON.stringify(OVERRIDES)
     OVERRIDES = remoteOverrides
+
+    installCustomStyles(remote.customSubjects ?? [])
 
     if (typeof remote.extendedHours === 'boolean') {
       const isExtended = N_COLS > 21

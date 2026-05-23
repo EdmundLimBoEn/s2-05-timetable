@@ -1,6 +1,6 @@
 // S2-05 Admin Dashboard
 
-const SUBJECT_DISPLAY = {
+const BUILTIN_SUBJECT_DISPLAY = {
   el:    'English (EL)',
   math:  'Mathematics',
   sci:   'Science',
@@ -17,20 +17,32 @@ const SUBJECT_DISPLAY = {
   empty: 'Empty / Free period'
 }
 
-const DEFAULT_LABELS = {
+// Mutable display map — rebuilt on each renderSubjects()
+let SUBJECT_DISPLAY = { ...BUILTIN_SUBJECT_DISPLAY }
+
+const BUILTIN_DEFAULT_LABELS = {
   el: 'EL', math: 'MATH', sci: 'SCI', hum: 'Humanities',
   mt: 'Chinese', sw: 'S&W', cce: 'CCE / Assembly', hsl: 'HSL',
   hbl: 'HBL', cm: 'CM(CT)', admt: 'ADMT', ict: 'ICT',
   brk: 'BREAK', empty: '—'
 }
 
+let DEFAULT_LABELS = { ...BUILTIN_DEFAULT_LABELS }
+
 const DAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
 const SPAN_TOTAL = 30
-const SUBJECT_KEYS = Object.keys(SUBJECT_DISPLAY)
+
+// Returns merged built-in + custom subject keys for dropdowns
+function getSubjectKeys() {
+  return [
+    ...Object.keys(BUILTIN_SUBJECT_DISPLAY),
+    ...(editingData.customSubjects ?? []).map(s => s.key)
+  ]
+}
 
 // ── State ─────────────────────────────────────────────────────
 let activeWeek = 'odd'
-let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [], overrides: [], extendedHours: false }
+let editingData = { timetable: { odd: [], even: [] }, exams: [], announcements: [], overrides: [], extendedHours: false, customSubjects: [] }
 let serverData  = null   // last confirmed saved state
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -47,15 +59,17 @@ async function init() {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
-    editingData.announcements = editingData.announcements ?? []
-    editingData.overrides     = editingData.overrides     ?? []
-    editingData.extendedHours = editingData.extendedHours ?? false
+    editingData.announcements  = editingData.announcements  ?? []
+    editingData.overrides      = editingData.overrides      ?? []
+    editingData.extendedHours  = editingData.extendedHours  ?? false
+    editingData.customSubjects = editingData.customSubjects ?? []
     renderLastSaved(data)
   } catch {
     showToast('Could not load timetable data.', 'error')
   }
 
   show('dashboard')
+  renderSubjects()
   renderTimetable()
   renderEvents()
   renderAnnouncements()
@@ -131,10 +145,10 @@ function renderDayRows(di, container) {
     // Subject select
     const sel = document.createElement('select')
     sel.className = 'subj-select'
-    SUBJECT_KEYS.forEach(key => {
+    getSubjectKeys().forEach(key => {
       const opt = document.createElement('option')
       opt.value = key
-      opt.textContent = SUBJECT_DISPLAY[key]
+      opt.textContent = SUBJECT_DISPLAY[key] || key
       if (key === block.style) opt.selected = true
       sel.appendChild(opt)
     })
@@ -415,16 +429,22 @@ function applySaveResult(result) {
     editingData.extendedHours = result.extendedHours
     renderHoursToggle()
   }
+  if (Array.isArray(result.customSubjects)) {
+    serverData = { ...serverData, customSubjects: result.customSubjects }
+    editingData.customSubjects = result.customSubjects
+    renderSubjects()
+  }
   renderLastSaved(result)
 }
 
 function buildPayload(patch = {}) {
   return {
-    timetable:     editingData.timetable,
-    exams:         editingData.exams,
-    announcements: editingData.announcements,
-    overrides:     editingData.overrides,
-    extendedHours: editingData.extendedHours ?? false,
+    timetable:      editingData.timetable,
+    exams:          editingData.exams,
+    announcements:  editingData.announcements,
+    overrides:      editingData.overrides,
+    extendedHours:  editingData.extendedHours ?? false,
+    customSubjects: editingData.customSubjects ?? [],
     ...patch
   }
 }
@@ -621,9 +641,9 @@ function renderOverrides() {
 
           const sel = document.createElement('select')
           sel.className = 'subj-select'
-          SUBJECT_KEYS.forEach(key => {
+          getSubjectKeys().forEach(key => {
             const opt = document.createElement('option')
-            opt.value = key; opt.textContent = SUBJECT_DISPLAY[key]
+            opt.value = key; opt.textContent = SUBJECT_DISPLAY[key] || key
             if (key === b.style) opt.selected = true
             sel.appendChild(opt)
           })
@@ -727,6 +747,218 @@ async function saveExtendedHours(value) {
   }
 }
 
+// ── Custom Subjects ───────────────────────────────────────────
+function rebuildSubjectMaps() {
+  SUBJECT_DISPLAY = { ...BUILTIN_SUBJECT_DISPLAY }
+  DEFAULT_LABELS  = { ...BUILTIN_DEFAULT_LABELS }
+  for (const s of (editingData.customSubjects ?? [])) {
+    SUBJECT_DISPLAY[s.key] = `${s.label} (${s.abbrev})`
+    DEFAULT_LABELS[s.key]  = s.abbrev
+  }
+}
+
+function slugify(label) {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 31) || 'subj'
+}
+
+function updateNewSubjPreview() {
+  const chip  = document.getElementById('newSubjPreview')
+  const color = document.getElementById('newSubjColor').value
+  const text  = document.getElementById('newSubjTextColor').value
+  const abbrev = document.getElementById('newSubjAbbrev').value || 'PREVIEW'
+  const opacity = parseFloat(document.getElementById('newSubjOpacity').value) || 0.18
+  const [r, g, b] = [parseInt(color.slice(1,3),16), parseInt(color.slice(3,5),16), parseInt(color.slice(5,7),16)]
+  chip.textContent = abbrev
+  chip.style.background = `rgba(${r},${g},${b},${opacity})`
+  chip.style.color = text
+  chip.style.borderLeft = `3px solid ${color}`
+}
+
+function renderSubjects() {
+  rebuildSubjectMaps()
+
+  const list = document.getElementById('subjList')
+  if (!list) return
+  list.innerHTML = ''
+
+  const subjects = editingData.customSubjects ?? []
+  if (subjects.length === 0) {
+    list.innerHTML = '<p style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em">No custom subjects yet.</p>'
+    return
+  }
+
+  subjects.forEach((s, idx) => {
+    const row = document.createElement('div')
+    row.className = 'subj-row'
+
+    const [r, g, b] = [parseInt(s.color.slice(1,3),16), parseInt(s.color.slice(3,5),16), parseInt(s.color.slice(5,7),16)]
+    const chip = document.createElement('span')
+    chip.className = 'subj-preview-chip'
+    chip.textContent = s.abbrev
+    chip.style.background = `rgba(${r},${g},${b},${s.bgOpacity ?? 0.18})`
+    chip.style.color = s.textColor
+    chip.style.borderLeft = `3px solid ${s.color}`
+
+    const info = document.createElement('span')
+    info.className = 'subj-row-info'
+    info.textContent = `${s.label}  ·  key: ${s.key}`
+
+    const delBtn = document.createElement('button')
+    delBtn.className = 'btn danger small'
+    delBtn.textContent = '✕'
+    delBtn.addEventListener('click', () => confirmDeleteSubject(s.key))
+
+    row.appendChild(chip)
+    row.appendChild(info)
+    row.appendChild(delBtn)
+    list.appendChild(row)
+  })
+}
+
+async function saveSubjects() {
+  showSaveBar('saving')
+  try {
+    const result = await apiFetch('/api/save', {
+      method: 'POST',
+      body: JSON.stringify(buildPayload({ customSubjects: editingData.customSubjects }))
+    })
+    applySaveResult(result)
+    showSaveBar('saved')
+    showToast('Subjects saved ✓', 'success')
+  } catch (err) {
+    showSaveBar('error')
+    showToast('Save failed: ' + err.message, 'error')
+  }
+}
+
+function confirmDeleteSubject(key) {
+  const subjects = editingData.customSubjects ?? []
+  const s = subjects.find(x => x.key === key)
+  if (!s) return
+
+  // Find all usages
+  const usages = []
+  for (const wk of ['odd', 'even']) {
+    ;(editingData.timetable[wk] || []).forEach((day, di) => {
+      day.forEach((block, bi) => {
+        if (block.style === key) usages.push(`${wk.toUpperCase()} · ${DAY_LABELS[di]} · row ${bi + 1}`)
+      })
+    })
+  }
+  ;(editingData.overrides || []).forEach(ovr => {
+    ;(ovr.blocks || []).forEach((block, bi) => {
+      if (block.style === key) usages.push(`Override ${ovr.date} · row ${bi + 1}`)
+    })
+  })
+
+  const body = document.getElementById('deleteSubjBody')
+  if (usages.length > 0) {
+    body.innerHTML = `<strong>${s.label}</strong> is used in ${usages.length} place(s):<br><br>` +
+      usages.map(u => `<span class="subj-usage-item">${u}</span>`).join('') +
+      '<br><br>All these blocks will be reset to <em>empty</em>.'
+  } else {
+    body.innerHTML = `Delete <strong>${s.label}</strong>? This cannot be undone.`
+  }
+
+  document.getElementById('deleteSubjModal').classList.remove('hidden')
+
+  // Snapshot for rollback
+  const snapshot = deepClone(editingData)
+
+  const confirmBtn = document.getElementById('deleteSubjConfirm')
+  const cancelBtn  = document.getElementById('deleteSubjCancel')
+
+  const close = () => {
+    document.getElementById('deleteSubjModal').classList.add('hidden')
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true))
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true))
+  }
+
+  document.getElementById('deleteSubjCancel').addEventListener('click', close, { once: true })
+  document.getElementById('deleteSubjConfirm').addEventListener('click', async () => {
+    // Rewrite usages to empty
+    for (const wk of ['odd', 'even']) {
+      ;(editingData.timetable[wk] || []).forEach(day => {
+        day.forEach(block => {
+          if (block.style === key) { block.style = 'empty'; block.label = '—' }
+        })
+      })
+    }
+    ;(editingData.overrides || []).forEach(ovr => {
+      ;(ovr.blocks || []).forEach(block => {
+        if (block.style === key) { block.style = 'empty'; block.label = '—' }
+      })
+    })
+    editingData.customSubjects = (editingData.customSubjects ?? []).filter(x => x.key !== key)
+    close()
+
+    showSaveBar('saving')
+    try {
+      const result = await apiFetch('/api/save', { method: 'POST', body: JSON.stringify(buildPayload()) })
+      applySaveResult(result)
+      renderTimetable()
+      renderOverrides()
+      showSaveBar('saved')
+      showToast(`Deleted "${s.label}" ✓`, 'success')
+    } catch (err) {
+      // Rollback on failure
+      editingData.timetable      = snapshot.timetable
+      editingData.overrides      = snapshot.overrides
+      editingData.customSubjects = snapshot.customSubjects
+      renderSubjects()
+      renderTimetable()
+      renderOverrides()
+      showSaveBar('error')
+      showToast('Delete failed — changes rolled back: ' + err.message, 'error')
+    }
+  }, { once: true })
+}
+
+// ── Add-subject form wiring ───────────────────────────────────
+document.getElementById('newSubjLabel').addEventListener('input', () => {
+  const label = document.getElementById('newSubjLabel').value
+  const key   = document.getElementById('newSubjKey')
+  if (!key._touched) key.value = slugify(label)
+  updateNewSubjPreview()
+})
+document.getElementById('newSubjKey').addEventListener('input', e => {
+  e.target._touched = !!e.target.value
+})
+;['newSubjAbbrev','newSubjColor','newSubjTextColor','newSubjOpacity'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateNewSubjPreview)
+})
+
+document.getElementById('addSubjBtn').addEventListener('click', async () => {
+  const label     = document.getElementById('newSubjLabel').value.trim()
+  const abbrev    = document.getElementById('newSubjAbbrev').value.trim()
+  const color     = document.getElementById('newSubjColor').value
+  const textColor = document.getElementById('newSubjTextColor').value
+  const bgOpacity = parseFloat(document.getElementById('newSubjOpacity').value)
+  let   key       = document.getElementById('newSubjKey').value.trim() || slugify(label)
+
+  if (!label)  { showToast('Label is required', 'error'); return }
+  if (!abbrev) { showToast('Short label (abbrev) is required', 'error'); return }
+  if (!/^[a-z][a-z0-9_-]{0,30}$/.test(key)) {
+    showToast('Key must start with a letter and contain only a-z 0-9 _ -', 'error'); return
+  }
+
+  const BUILTIN_KEYS = new Set(Object.keys(BUILTIN_SUBJECT_DISPLAY))
+  if (BUILTIN_KEYS.has(key)) { showToast(`"${key}" is a built-in subject key`, 'error'); return }
+  if ((editingData.customSubjects ?? []).some(s => s.key === key)) {
+    showToast(`Key "${key}" already exists`, 'error'); return
+  }
+
+  const newSubj = { key, label, abbrev, color, bgOpacity: isNaN(bgOpacity) ? 0.18 : Math.min(1, Math.max(0, bgOpacity)), textColor }
+  editingData.customSubjects = [...(editingData.customSubjects ?? []), newSubj]
+
+  document.getElementById('newSubjLabel').value  = ''
+  document.getElementById('newSubjAbbrev').value = ''
+  document.getElementById('newSubjKey').value    = ''
+  document.getElementById('newSubjKey')._touched = false
+
+  await saveSubjects()
+})
+
 // ── Login / Logout ────────────────────────────────────────────
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault()
@@ -747,12 +979,14 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     const data = await apiFetch('/api/admin-data')
     serverData  = data
     editingData = deepClone(data)
-    editingData.announcements = editingData.announcements ?? []
-    editingData.overrides     = editingData.overrides     ?? []
-    editingData.extendedHours = editingData.extendedHours ?? false
+    editingData.announcements  = editingData.announcements  ?? []
+    editingData.overrides      = editingData.overrides      ?? []
+    editingData.extendedHours  = editingData.extendedHours  ?? false
+    editingData.customSubjects = editingData.customSubjects ?? []
     renderLastSaved(data)
     hide('loginSection')
     show('dashboard')
+    renderSubjects()
     renderTimetable()
     renderEvents()
     renderAnnouncements()
@@ -781,6 +1015,7 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     document.getElementById('tabEvents').classList.toggle('hidden', name !== 'events')
     document.getElementById('tabAnnouncements').classList.toggle('hidden', name !== 'announcements')
     document.getElementById('tabOverrides').classList.toggle('hidden', name !== 'overrides')
+    document.getElementById('tabSubjects').classList.toggle('hidden', name !== 'subjects')
   })
 })
 

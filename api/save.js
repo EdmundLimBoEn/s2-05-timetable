@@ -89,19 +89,21 @@ export default async function handler(req, res) {
     return clean
   })
 
-  const overrides     = body.overrides ?? []
-  const extendedHours = typeof body.extendedHours === 'boolean' ? body.extendedHours : false
+  const overrides      = body.overrides ?? []
+  const extendedHours  = typeof body.extendedHours === 'boolean' ? body.extendedHours : false
+  const customSubjects = Array.isArray(body.customSubjects) ? body.customSubjects : []
 
   try {
-    const data = await setData(body.timetable, events, announcements, overrides, extendedHours, username)
+    const data = await setData(body.timetable, events, announcements, overrides, extendedHours, username, customSubjects)
     res.status(200).json({
-      ok:            true,
-      updatedAt:     data.updatedAt,
-      updatedBy:     data.updatedBy,
-      announcements: data.announcements,
-      exams:         data.exams,
-      overrides:     data.overrides,
-      extendedHours: data.extendedHours,
+      ok:             true,
+      updatedAt:      data.updatedAt,
+      updatedBy:      data.updatedBy,
+      announcements:  data.announcements,
+      exams:          data.exams,
+      overrides:      data.overrides,
+      extendedHours:  data.extendedHours,
+      customSubjects: data.customSubjects,
     })
   } catch (err) {
     console.error('[/api/save]', err)

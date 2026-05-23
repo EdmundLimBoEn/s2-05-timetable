@@ -1,4 +1,4 @@
-const VALID_STYLES = new Set([
+const BUILT_IN_STYLES = new Set([
   'el','math','sci','hum','mt','sw','cce','hsl','hbl','cm','admt','ict','brk','empty','holiday'
 ])
 const WEEKS   = ['odd', 'even']
@@ -6,12 +6,50 @@ const N_DAYS  = 5
 const SPAN_TOTAL = 30
 
 const VALID_CATEGORIES = new Set(['general', 'homework', 'exam', 'event'])
+const CUSTOM_KEY_RE   = /^[a-z][a-z0-9_-]{0,30}$/
+const HEX_COLOR_RE    = /^#[0-9a-fA-F]{6}$/
+
+function validateCustomSubjects(subjects, path, errors) {
+  const seen = new Set()
+  subjects.forEach((s, i) => {
+    const p = `${path}[${i}]`
+    if (typeof s.key !== 'string' || !CUSTOM_KEY_RE.test(s.key))
+      errors.push(`${p}.key must match /^[a-z][a-z0-9_-]{0,30}$/`)
+    else if (BUILT_IN_STYLES.has(s.key))
+      errors.push(`${p}.key "${s.key}" collides with a built-in subject`)
+    else if (seen.has(s.key))
+      errors.push(`${p}.key "${s.key}" is a duplicate`)
+    else
+      seen.add(s.key)
+    if (typeof s.label !== 'string' || !s.label.trim() || s.label.length > 40)
+      errors.push(`${p}.label must be a non-empty string ≤40 chars`)
+    if (typeof s.abbrev !== 'string' || !s.abbrev.trim() || s.abbrev.length > 8)
+      errors.push(`${p}.abbrev must be a non-empty string ≤8 chars`)
+    if (!HEX_COLOR_RE.test(s.color))
+      errors.push(`${p}.color must be a 6-digit hex color (got "${s.color}")`)
+    if (typeof s.bgOpacity !== 'number' || s.bgOpacity < 0 || s.bgOpacity > 1)
+      errors.push(`${p}.bgOpacity must be a number in [0, 1]`)
+    if (!HEX_COLOR_RE.test(s.textColor))
+      errors.push(`${p}.textColor must be a 6-digit hex color (got "${s.textColor}")`)
+  })
+  return seen
+}
 
 export function validateData(body) {
   const errors = []
   if (!body || typeof body !== 'object') return ['Invalid payload']
 
   const { timetable, exams, announcements, overrides } = body
+
+  // Validate customSubjects first so we can use the keys during style checks
+  const rawCustomSubjects = Array.isArray(body.customSubjects) ? body.customSubjects : []
+  if (body.customSubjects !== undefined && !Array.isArray(body.customSubjects)) {
+    errors.push('customSubjects must be an array')
+  } else {
+    validateCustomSubjects(rawCustomSubjects, 'customSubjects', errors)
+  }
+  const globalCustomKeys = new Set(rawCustomSubjects.map(s => s.key))
+  const allValidStyles = key => BUILT_IN_STYLES.has(key) || globalCustomKeys.has(key)
 
   // Validate timetable
   if (!timetable || typeof timetable !== 'object') {
@@ -36,7 +74,7 @@ export function validateData(body) {
         if (typeof block.label !== 'string' || !block.label) {
           errors.push(`timetable.${week}[${di}][${bi}].label must be a string`)
         }
-        if (!VALID_STYLES.has(block.style)) {
+        if (!allValidStyles(block.style)) {
           errors.push(`timetable.${week}[${di}][${bi}].style "${block.style}" is unknown`)
         }
         if (!Number.isInteger(block.span) || block.span < 1 || block.span > 30) {
@@ -141,7 +179,7 @@ export function validateData(body) {
             if (sum !== SPAN_TOTAL)
               errors.push(`overrides[${i}].blocks must sum to ${SPAN_TOTAL} (got ${sum})`)
             o.blocks.forEach((b, bi) => {
-              if (!VALID_STYLES.has(b.style))
+              if (!allValidStyles(b.style))
                 errors.push(`overrides[${i}].blocks[${bi}].style "${b.style}" is unknown`)
             })
           }

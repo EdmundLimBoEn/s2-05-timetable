@@ -54,7 +54,7 @@ export async function getData() {
     const { kept, removed } = pruneExpiredEvents(data.exams)
     if (removed.length > 0) {
       data.exams = kept
-      setData(data.timetable, kept, data.announcements, data.overrides, data.extendedHours, data.updatedBy || 'auto').catch(err => {
+      setData(data.timetable, kept, data.announcements, data.overrides, data.extendedHours, data.updatedBy || 'auto', data.customSubjects ?? []).catch(err => {
         console.error('[kv] auto-prune save failed:', err)
       })
     }
@@ -64,13 +64,14 @@ export async function getData() {
   }
 }
 
-export async function setData(timetable, exams, announcements, overrides, extendedHours, username) {
+export async function setData(timetable, exams, announcements, overrides, extendedHours, username, customSubjects) {
   const data = {
     timetable,
     exams,
     announcements:  announcements  ?? [],
     overrides:      overrides      ?? [],
     extendedHours:  extendedHours  ?? false,
+    customSubjects: customSubjects ?? [],
     updatedAt: new Date().toISOString(),
     updatedBy: username
   }
