@@ -13,6 +13,10 @@ function validateCustomSubjects(subjects, path, errors) {
   const seen = new Set()
   subjects.forEach((s, i) => {
     const p = `${path}[${i}]`
+    if (!s || typeof s !== 'object' || Array.isArray(s)) {
+      errors.push(`${p} must be an object`)
+      return
+    }
     if (typeof s.key !== 'string' || !CUSTOM_KEY_RE.test(s.key))
       errors.push(`${p}.key must match /^[a-z][a-z0-9_-]{0,30}$/`)
     else if (BUILT_IN_STYLES.has(s.key))

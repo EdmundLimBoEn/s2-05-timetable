@@ -796,6 +796,8 @@ html, body {
   padding: 24px;
   max-width: 480px;
   width: 90%;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
