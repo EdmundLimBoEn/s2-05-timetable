@@ -433,6 +433,8 @@ function applySaveResult(result) {
     serverData = { ...serverData, customSubjects: result.customSubjects }
     editingData.customSubjects = result.customSubjects
     renderSubjects()
+    renderTimetable()
+    renderOverrides()
   }
   renderLastSaved(result)
 }
@@ -851,13 +853,14 @@ function confirmDeleteSubject(key) {
     })
   })
 
+  const esc = v => String(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
   const body = document.getElementById('deleteSubjBody')
   if (usages.length > 0) {
-    body.innerHTML = `<strong>${s.label}</strong> is used in ${usages.length} place(s):<br><br>` +
-      usages.map(u => `<span class="subj-usage-item">${u}</span>`).join('') +
+    body.innerHTML = `<strong>${esc(s.label)}</strong> is used in ${usages.length} place(s):<br><br>` +
+      usages.map(u => `<span class="subj-usage-item">${esc(u)}</span>`).join('') +
       '<br><br>All these blocks will be reset to <em>empty</em>.'
   } else {
-    body.innerHTML = `Delete <strong>${s.label}</strong>? This cannot be undone.`
+    body.innerHTML = `Delete <strong>${esc(s.label)}</strong>? This cannot be undone.`
   }
 
   document.getElementById('deleteSubjModal').classList.remove('hidden')
