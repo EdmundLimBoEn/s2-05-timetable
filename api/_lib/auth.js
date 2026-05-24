@@ -39,11 +39,35 @@ export async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash)
 }
 
+export function getApiTokens() {
+  try {
+    return JSON.parse(process.env.API_TOKENS_JSON || '[]')
+  } catch (err) {
+    console.error('[getApiTokens] API_TOKENS_JSON parse failed:', err.message)
+    return []
+  }
+}
+
 export async function getAdminFromRequest(req) {
+  // Cookie session (web admin)
   const cookieHeader = req.headers['cookie'] || ''
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))
-  if (!match) return null
-  return verifySession(decodeURIComponent(match[1]))
+  if (match) return verifySession(decodeURIComponent(match[1]))
+
+  // Bearer token (agent / API access)
+  const auth = req.headers['authorization'] || ''
+  const bearerMatch = auth.match(/^Bearer\s+(\S+)$/)
+  if (!bearerMatch) return null
+  const token = bearerMatch[1]
+
+  const apiTokens = getApiTokens()
+  for (const entry of apiTokens) {
+    if (entry && typeof entry.name === 'string' && typeof entry.tokenHash === 'string') {
+      const valid = await bcrypt.compare(token, entry.tokenHash)
+      if (valid) return `agent:${entry.name}`
+    }
+  }
+  return null
 }
 
 export function sessionCookie(token) {

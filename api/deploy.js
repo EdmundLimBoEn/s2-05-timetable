@@ -41,6 +41,7 @@ export default function deployHandler(req, res) {
     rsync -a --delete \\
       --exclude='.git' \\
       --exclude='node_modules' \\
+      --exclude='mcp-server' \\
       --exclude='data' \\
       --exclude='.env' \\
       "$TMP/$EXTRACTED/" "${targetDir}/"
