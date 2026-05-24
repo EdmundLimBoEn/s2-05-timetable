@@ -270,6 +270,41 @@ node scripts/hash-password.js <new-password>
 pm2 restart timetable
 ```
 
+### Agent / bearer-token auth (`API_TOKENS_JSON`)
+
+Long-lived tokens for AI agents (Claude Desktop, Claude Code, ChatGPT, scripts). Stored as bcrypt hashes — the server **never** holds the raw token.
+
+```env
+# ~/.env on the server — add alongside ADMINS_JSON
+API_TOKENS_JSON=[{"name":"claude-desktop","tokenHash":"$2a$10$..."}]
+```
+
+**Mint a new token** (run on the server or locally, then paste the hash into `~/.env`):
+```bash
+source ~/.nvm/nvm.sh
+cd ~/timetable          # or ~/timetable-dev
+node scripts/generate-token.js claude-desktop
+# Prints the raw token ONCE and the bcrypt hash.
+# Add the hash to API_TOKENS_JSON in ~/.env, then restart PM2.
+pm2 restart timetable   # or timetable-dev
+```
+
+- All admin endpoints (`/api/admin-data`, `/api/save`, etc.) accept `Authorization: Bearer <raw-token>` in addition to the session cookie.
+- `updatedBy` in saved data is recorded as `agent:<name>` so agent edits are distinguishable from human edits.
+- To revoke a token: remove its entry from `API_TOKENS_JSON` and restart PM2. No other change needed.
+- Full agent setup guide (MCP config, curl examples, system prompt): `AGENTS.md`.
+
+### MCP server (`mcp-server/`)
+
+A local stdio MCP server that wraps the admin API. Not deployed to the server — run it on your own machine and point it at production or testing.
+
+```bash
+cd mcp-server && npm install
+# Set env vars, then attach to Claude Desktop or Claude Code (see AGENTS.md).
+```
+
+Tools: `get_timetable`, `set_week`, `add_custom_subject`, `list_custom_subjects`, `save_timetable`.
+
 ### GitHub Actions secret
 `DEPLOY_SSH_KEY` — the private SSH key whose public half is in `~/.ssh/authorized_keys` on the server. Add via GitHub repo Settings → Secrets → Actions.
 
