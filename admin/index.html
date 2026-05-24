@@ -41,6 +41,7 @@
       <button class="admin-tab"        data-tab="events">EVENTS</button>
       <button class="admin-tab"        data-tab="announcements">ANNCS</button>
       <button class="admin-tab"        data-tab="overrides">OVERRIDES</button>
+      <button class="admin-tab"        data-tab="subjects">SUBJECTS</button>
     </nav>
 
     <!-- Timetable tab -->
@@ -121,7 +122,6 @@
         <span class="save-status" id="saveEventsStatus"></span>
       </div>
     </div>
-  </div>
 
     <!-- Announcements tab -->
     <div class="admin-content hidden" id="tabAnnouncements">
@@ -174,6 +174,45 @@
       </div>
 
       <div id="ovrsList" style="margin-top:16px"></div>
+    </div>
+
+    <!-- Subjects tab -->
+    <div class="admin-content hidden" id="tabSubjects">
+      <div style="height:16px"></div>
+      <p style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:16px">
+        CUSTOM SUBJECTS · define reusable subject types with full colour theming
+      </p>
+
+      <div class="subj-add-form">
+        <div class="subj-add-row">
+          <input class="exam-label-input" id="newSubjLabel"   type="text"   placeholder="Label (e.g. Museum Tour)" maxlength="40">
+          <input class="exam-label-input subj-abbrev-input" id="newSubjAbbrev" type="text" placeholder="Short (≤8)" maxlength="8">
+          <input class="exam-label-input subj-key-input"    id="newSubjKey"   type="text" placeholder="key (auto)" maxlength="31">
+        </div>
+        <div class="subj-color-row">
+          <label class="subj-color-label">COLOR<input class="subj-color-picker" id="newSubjColor" type="color" value="#9b59b6"></label>
+          <label class="subj-color-label">TEXT<input class="subj-color-picker" id="newSubjTextColor" type="color" value="#ffffff"></label>
+          <label class="subj-opacity-label">BG OPACITY
+            <input class="span-input" id="newSubjOpacity" type="number" min="0" max="1" step="0.01" value="0.18">
+          </label>
+          <div class="subj-preview-chip" id="newSubjPreview">PREVIEW</div>
+        </div>
+        <button class="btn primary" id="addSubjBtn">+ ADD SUBJECT</button>
+      </div>
+
+      <div id="subjList" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- Delete-confirm modal -->
+  <div id="deleteSubjModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-title">DELETE SUBJECT</div>
+      <div class="modal-body" id="deleteSubjBody"></div>
+      <div class="modal-actions">
+        <button class="btn" id="deleteSubjCancel">CANCEL</button>
+        <button class="btn danger" id="deleteSubjConfirm">CONFIRM DELETE</button>
+      </div>
     </div>
   </div>
 

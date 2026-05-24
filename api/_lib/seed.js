@@ -118,5 +118,6 @@ export const SEED = {
   ],
   announcements: [],
   overrides: [],
-  extendedHours: false
+  extendedHours: false,
+  customSubjects: []
 }
