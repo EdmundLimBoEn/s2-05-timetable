@@ -90,6 +90,46 @@ Changes are live on the public site within 10 seconds.
 
 ---
 
+## AI agent access (MCP)
+
+Any Claude client can be given full admin access via the hosted MCP server — no local install required.
+
+**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": {
+        "Authorization": "Bearer your-raw-token-here"
+      }
+    }
+  }
+}
+```
+
+**Claude Code** — `.mcp.json` in the repo root (gitignored):
+
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": {
+        "Authorization": "Bearer your-raw-token-here"
+      }
+    }
+  }
+}
+```
+
+Available tools: `get_timetable`, `set_week`, `add_announcement`, `delete_announcement`, `add_exam`, `delete_exam`, `add_override`, `delete_override`, `add_custom_subject`, `delete_custom_subject`, `list_custom_subjects`, `save_timetable`.
+
+Tokens are managed via `API_TOKENS_JSON` in `~/.env` on the server. See [AGENTS.md](./AGENTS.md) for the full setup guide.
+
+---
+
 ## Fork this for your class
 
 You can run your own instance of this app for any class with a repeating odd/even week schedule.

@@ -41,13 +41,16 @@ export default function deployHandler(req, res) {
     rsync -a --delete \\
       --exclude='.git' \\
       --exclude='node_modules' \\
+      --exclude='mcp-server/.env' \\
       --exclude='data' \\
       --exclude='.env' \\
       "$TMP/$EXTRACTED/" "${targetDir}/"
     cd "${targetDir}"
     npm install --omit=dev
+    npm install --prefix mcp-server --omit=dev
     rm -rf "$TMP"
     pm2 restart "$DEPLOY_PM2"
+    pm2 restart timetable-mcp 2>/dev/null || true
   `
 
   exec(script, { shell: '/bin/bash', env: { ...process.env, DEPLOY_BRANCH: branch, DEPLOY_PM2: pm2Name } }, (err, stdout, stderr) => {

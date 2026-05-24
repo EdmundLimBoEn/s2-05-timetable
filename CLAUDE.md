@@ -65,8 +65,8 @@ Admin panel (/admin/index.html + admin/admin.js)
 ### Admin panel
 | File | Role |
 |------|------|
-| `admin/index.html` | Login card + dashboard shell (TIMETABLE / EXAMS / ANNCS tabs) |
-| `admin/admin.js` | SPA logic: render editors, save, login/logout, week toggle, announcements |
+| `admin/index.html` | Login card + dashboard shell (TIMETABLE / EVENTS / ANNCS / OVERRIDES / SUBJECTS tabs) |
+| `admin/admin.js` | SPA logic: render editors, save, login/logout, week toggle, announcements, custom subjects CRUD |
 | `admin/admin.css` | Dark terminal aesthetic, matches public site |
 
 ### Utilities
@@ -114,7 +114,36 @@ Admin panel: ANNCS tab — add/delete announcements, then SAVE. Saved instantly 
 Public site: shown in the bottom panel (ANNOUNCEMENTS pane). New unseen announcements trigger a top-right toast (auto-dismiss 6 s, or ✕ to close). Seen state stored in `localStorage['anncs-seen']`.
 
 ### `ABBREV`
-Short labels shown inside cells. Keys must match every `style` value used in `TIMETABLE`.
+Short labels shown inside cells. `BUILTIN_ABBREV` is a frozen constant in `script.js`. On each data refresh, `installCustomStyles()` rebuilds the mutable `ABBREV` from that baseline plus any `customSubjects` entries — so deleted customs never linger.
+
+### `CUSTOM_SUBJECTS`
+Array of user-defined subject types stored in `timetable-data.json`:
+```json
+{
+  "key":       "museum",
+  "label":     "Museum Tour",
+  "abbrev":    "MUSEUM",
+  "color":     "#9b59b6",
+  "bgOpacity": 0.18,
+  "textColor": "#ffffff"
+}
+```
+- `key` — `/^[a-z][a-z0-9_-]{0,30}$/`, must not collide with the 15 built-in keys
+- `label` — non-empty, ≤40 chars (shown in admin dropdown + now-bar)
+- `abbrev` — non-empty, ≤8 chars (shown inside the cell)
+- `color` — 6-digit hex; drives `--c-<key>` CSS var and left border
+- `bgOpacity` — number in [0, 1]; controls cell background tint
+- `textColor` — 6-digit hex; `.cell.<key> .subj` text color
+
+CSS rules for custom subjects are injected at runtime by `installCustomStyles()` into `<style id="custom-subjects">` in `<head>`, after `#theme-ovr`. No changes to `style.css` are needed.
+
+**Admin flow:** SUBJECTS tab → add form → save → public site picks up within 10 s. Deleting a subject that is still in use shows a destructive-confirm modal listing every timetable row / override block using it; on confirm those blocks are rewritten to `style: 'empty'`; on save failure the in-memory state rolls back.
+
+**Adding a built-in subject type** (not a custom one) still requires four coordinated changes:
+1. `style.css` — add `--c-<key>` in `:root` and `.cell.<key>` / `.cell.<key> .subj` rules
+2. `script.js` `BUILTIN_ABBREV` — add `key: 'SHORT'`
+3. `admin/admin.js` `BUILTIN_SUBJECT_DISPLAY` + `BUILTIN_DEFAULT_LABELS` — add the key
+4. `api/_lib/validate.js` `BUILT_IN_STYLES` — add the key
 
 ### Local file storage (`timetable-data.json`)
 ```json
@@ -123,6 +152,9 @@ Short labels shown inside cells. Keys must match every `style` value used in `TI
   "exams": [...],
   "announcements": [
     { "id": "uuid", "title": "...", "body": "...", "category": "general", "createdAt": "ISO", "createdBy": "username" }
+  ],
+  "customSubjects": [
+    { "key": "museum", "label": "Museum Tour", "abbrev": "MUSEUM", "color": "#9b59b6", "bgOpacity": 0.18, "textColor": "#ffffff" }
   ],
   "updatedAt": "ISO string",
   "updatedBy": "username"
@@ -146,11 +178,13 @@ Layout mode persisted in `localStorage['bottom-layout']` (default: `split`).
 
 ## Adding / editing a subject type
 
-Three coordinated changes required:
+**Custom subjects (preferred):** use the admin SUBJECTS tab — no code changes needed.
+
+**Adding a new built-in subject** requires four coordinated changes:
 1. `style.css` — add `--c-<key>` in `:root` and `.cell.<key>` / `.cell.<key> .subj` rules
-2. `script.js` `ABBREV` — add `key: 'SHORT'`
-3. `script.js` `TIMETABLE` — use the key as `style` in block objects
-4. `admin/admin.js` `SUBJECT_DISPLAY` + `DEFAULT_LABELS` — add the key for the admin dropdowns
+2. `script.js` `BUILTIN_ABBREV` — add `key: 'SHORT'`
+3. `admin/admin.js` `BUILTIN_SUBJECT_DISPLAY` + `BUILTIN_DEFAULT_LABELS` — add the key
+4. `api/_lib/validate.js` `BUILT_IN_STYLES` — add the key
 
 ---
 
@@ -236,6 +270,83 @@ node scripts/hash-password.js <new-password>
 pm2 restart timetable
 ```
 
+### Agent / MCP server setup
+
+Two ways to give an AI agent full admin access:
+
+**Option A — Hosted HTTP (zero local install)**
+Connect to the MCP server running on the Hack Club container:
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": { "Authorization": "Bearer <your-raw-token>" }
+    }
+  }
+}
+```
+Add this to Claude Desktop's config file or to `.mcp.json` in the repo root.
+The bearer token must exist in `API_TOKENS_JSON` on the server.
+
+**Option B — Local stdio (dev / local-only)**
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "command": "node",
+      "args": ["./mcp-server/server.js"],
+      "env": {
+        "TIMETABLE_API_URL": "https://timetable.edmundlim.systems",
+        "TIMETABLE_API_TOKEN": "<your-raw-token>"
+      }
+    }
+  }
+}
+```
+
+The MCP server exposes 12 tools covering everything the admin panel can do:
+`get_timetable`, `set_week`, `add_custom_subject`, `delete_custom_subject`,
+`add_announcement`, `delete_announcement`, `add_exam`, `delete_exam`,
+`add_override`, `delete_override`, `list_custom_subjects`, `save_timetable`.
+
+See `AGENTS.md` for the full setup guide and recommended agent system prompt.
+
+### Agent / bearer-token auth (`API_TOKENS_JSON`)
+
+Long-lived tokens for AI agents (Claude Desktop, Claude Code, ChatGPT, scripts). Stored as bcrypt hashes — the server **never** holds the raw token.
+
+```env
+# ~/.env on the server — add alongside ADMINS_JSON
+API_TOKENS_JSON=[{"name":"claude-desktop","tokenHash":"$2a$10$..."}]
+```
+
+**Mint a new token** (run on the server or locally, then paste the hash into `~/.env`):
+```bash
+source ~/.nvm/nvm.sh
+cd ~/timetable          # or ~/timetable-dev
+node scripts/generate-token.js claude-desktop
+# Prints the raw token ONCE and the bcrypt hash.
+# Add the hash to API_TOKENS_JSON in ~/.env, then restart PM2.
+pm2 restart timetable   # or timetable-dev
+```
+
+- All admin endpoints (`/api/admin-data`, `/api/save`, etc.) accept `Authorization: Bearer <raw-token>` in addition to the session cookie.
+- `updatedBy` in saved data is recorded as `agent:<name>` so agent edits are distinguishable from human edits.
+- To revoke a token: remove its entry from `API_TOKENS_JSON` and restart PM2. No other change needed.
+- Full agent setup guide (MCP config, curl examples, system prompt): `AGENTS.md`.
+
+### MCP server (`mcp-server/`)
+
+A local stdio MCP server that wraps the admin API. Not deployed to the server — run it on your own machine and point it at production or testing.
+
+```bash
+cd mcp-server && npm install
+# Set env vars, then attach to Claude Desktop or Claude Code (see AGENTS.md).
+```
+
+Tools: `get_timetable`, `set_week`, `add_custom_subject`, `list_custom_subjects`, `save_timetable`.
+
 ### GitHub Actions secret
 `DEPLOY_SSH_KEY` — the private SSH key whose public half is in `~/.ssh/authorized_keys` on the server. Add via GitHub repo Settings → Secrets → Actions.
 
@@ -305,6 +416,65 @@ pm2 restart timetable       # restart production
 ## Service worker
 
 `sw.js` cache name is currently `tt-v9`. Bump it (`tt-v10`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+
+---
+
+## Tests / verification checklist
+
+There is no automated test runner. Use this manual checklist after any change to the data model or admin panel:
+
+### Custom subjects
+```bash
+# 1. Verify /api/data returns customSubjects: [] on a fresh or seed load
+curl -s https://testing.timetable.edmundlim.systems/api/data | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('customSubjects:', JSON.stringify(d.customSubjects))"
+
+# 2. Round-trip the local data file (run on server)
+node -e "JSON.parse(require('fs').readFileSync('data/timetable-data.json'))" && echo OK
+```
+
+**Admin SUBJECTS tab (manual):**
+- Add "Museum Tour" (key `museum`, color `#9b59b6`, abbrev `MUSEUM`, opacity `0.18`, text `#ffffff`) → save → public site shows the styled cell within 10 s
+- Assign `museum` to an ODD/MON block → cell renders with correct tint and `MUSEUM` label; now-bar shows full label when active
+- Delete `museum` while it's still used in a block → modal lists the row location → **CANCEL** keeps everything unchanged; **CONFIRM DELETE** rewrites the block to `empty` and saves
+- Try invalid inputs and verify server rejects them with a clear toast error:
+  - Key starting with a digit (`1museum`)
+  - Key colliding with a built-in (`el`, `math`, etc.)
+  - Duplicate custom key
+  - `bgOpacity` > 1
+  - `abbrev` longer than 8 chars
+  - Bad hex color (e.g. `#xyz`)
+
+### Span validation
+```bash
+# Verify every day in both weeks sums to exactly 30 spans (run on server)
+node -e "
+import('./api/_lib/validate.js').then(({validateData}) => {
+  const data = JSON.parse(require('fs').readFileSync('data/timetable-data.json', 'utf8'))
+  const errors = validateData(data).filter(e => /span/i.test(e))
+  if (errors.length) { console.error('Span errors:', errors); process.exit(1) }
+  console.log('All days sum to exactly 30 spans')
+})
+"
+```
+
+### Validation (server-side smoke test)
+```bash
+# Run on server in ~/timetable or ~/timetable-dev
+node -e "
+import('./api/_lib/validate.js').then(({validateData}) => {
+  const bad = validateData({ timetable: null, exams: [], customSubjects: [{key:'1bad'}] })
+  console.assert(bad.length > 0, 'should reject invalid payload')
+  console.log('validation smoke test OK — errors:', bad)
+})
+"
+```
+
+### After any save.js / kv.js change
+```bash
+# Confirm a round-trip save doesn't lose customSubjects
+pm2 logs timetable-dev --lines 20   # look for [kv] errors
+curl -s http://localhost:3001/api/data | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log('keys:', Object.keys(j))"
+```
 
 ---
 
