@@ -28,5 +28,18 @@ module.exports = {
         PM2_NAME:      'timetable-dev',
       },
     },
+    {
+      name:         'timetable-mcp',
+      script:       'mcp-server/server.js',
+      interpreter:  'node',
+      watch:        false,
+      autorestart:  true,
+      max_restarts: 10,
+      env: {
+        NODE_ENV:           'production',
+        MCP_PORT:           '3002',
+        TIMETABLE_API_URL:  'http://localhost',
+      },
+    },
   ],
 }

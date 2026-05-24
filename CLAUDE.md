@@ -270,6 +270,48 @@ node scripts/hash-password.js <new-password>
 pm2 restart timetable
 ```
 
+### Agent / MCP server setup
+
+Two ways to give an AI agent full admin access:
+
+**Option A — Hosted HTTP (zero local install)**
+Connect to the MCP server running on the Hack Club container:
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": { "Authorization": "Bearer <your-raw-token>" }
+    }
+  }
+}
+```
+Add this to Claude Desktop's config file or to `.mcp.json` in the repo root.
+The bearer token must exist in `API_TOKENS_JSON` on the server.
+
+**Option B — Local stdio (dev / local-only)**
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "command": "node",
+      "args": ["./mcp-server/server.js"],
+      "env": {
+        "TIMETABLE_API_URL": "https://timetable.edmundlim.systems",
+        "TIMETABLE_API_TOKEN": "<your-raw-token>"
+      }
+    }
+  }
+}
+```
+
+The MCP server exposes 12 tools covering everything the admin panel can do:
+`get_timetable`, `set_week`, `add_custom_subject`, `delete_custom_subject`,
+`add_announcement`, `delete_announcement`, `add_exam`, `delete_exam`,
+`add_override`, `delete_override`, `list_custom_subjects`, `save_timetable`.
+
+See `AGENTS.md` for the full setup guide and recommended agent system prompt.
+
 ### Agent / bearer-token auth (`API_TOKENS_JSON`)
 
 Long-lived tokens for AI agents (Claude Desktop, Claude Code, ChatGPT, scripts). Stored as bcrypt hashes — the server **never** holds the raw token.
@@ -401,6 +443,19 @@ node -e "JSON.parse(require('fs').readFileSync('data/timetable-data.json'))" && 
   - `bgOpacity` > 1
   - `abbrev` longer than 8 chars
   - Bad hex color (e.g. `#xyz`)
+
+### Span validation
+```bash
+# Verify every day in both weeks sums to exactly 30 spans (run on server)
+node -e "
+import('./api/_lib/validate.js').then(({validateData}) => {
+  const data = JSON.parse(require('fs').readFileSync('data/timetable-data.json', 'utf8'))
+  const errors = validateData(data).filter(e => /span/i.test(e))
+  if (errors.length) { console.error('Span errors:', errors); process.exit(1) }
+  console.log('All days sum to exactly 30 spans')
+})
+"
+```
 
 ### Validation (server-side smoke test)
 ```bash

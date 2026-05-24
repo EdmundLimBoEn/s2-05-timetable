@@ -41,18 +41,53 @@ pm2 restart timetable       # production
 
 ## 2. Option A — MCP server (Claude Desktop / Claude Code)
 
-The MCP server gives the agent named, schema-validated tools — the easiest path for Claude clients.
+The MCP server gives the agent named, schema-validated tools — the easiest path for Claude clients. It exposes 12 tools covering everything the admin panel can do.
 
-### Install
+### A1. Hosted HTTP (recommended — no local install)
 
-```bash
-cd mcp-server
-npm install
+The MCP server runs on the Hack Club container and is accessible at `https://mcp.timetable.edmundlim.systems/mcp`. Just point your client at it with a bearer token.
+
+**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": {
+        "Authorization": "Bearer your-raw-token-here"
+      }
+    }
+  }
+}
 ```
 
-### Claude Desktop
+**Claude Code** — `.mcp.json` in the repo root (gitignored — never commit it):
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "timetable": {
+      "url": "https://mcp.timetable.edmundlim.systems/mcp",
+      "headers": {
+        "Authorization": "Bearer your-raw-token-here"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop or reload the Claude Code session. All 12 tools will appear.
+
+### A2. Local stdio (development / testing server)
+
+Run the MCP server as a local subprocess. Useful for local development or pointing at the testing server.
+
+```bash
+cd mcp-server && npm install
+```
+
+**Claude Desktop**:
 
 ```json
 {
@@ -69,11 +104,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. The `get_timetable`, `set_week`, `add_custom_subject`, `list_custom_subjects`, and `save_timetable` tools will appear.
-
-### Claude Code
-
-Create `.mcp.json` in the repo root (it is gitignored — never commit it):
+**Claude Code** — `.mcp.json`:
 
 ```json
 {
@@ -89,6 +120,23 @@ Create `.mcp.json` in the repo root (it is gitignored — never commit it):
   }
 }
 ```
+
+### MCP tools reference
+
+| Tool | What it does |
+|---|---|
+| `get_timetable` | Fetch all data — call this first before any mutation |
+| `set_week` | Replace all 5 days of one week (odd or even) |
+| `add_custom_subject` | Add a new custom subject type |
+| `delete_custom_subject` | Delete a custom subject; affected blocks rewritten to "empty" |
+| `add_announcement` | Post a new announcement |
+| `delete_announcement` | Remove an announcement by id |
+| `add_exam` | Add an exam or event |
+| `delete_exam` | Remove an exam/event by id |
+| `add_override` | Add a holiday or custom-schedule override for a specific date |
+| `delete_override` | Remove a day override by date |
+| `list_custom_subjects` | Return just the custom subjects array |
+| `save_timetable` | Advanced: POST a full payload directly (escape hatch) |
 
 ---
 
@@ -132,8 +180,11 @@ Rules:
 1. Always call get_timetable first to read the current state before any mutation.
 2. Use set_week when replacing a full week from a schedule.
 3. Use add_custom_subject when a subject type doesn't exist yet.
-4. Confirm your plan with me before calling save_timetable or set_week.
-5. Every day must sum to exactly 30 spans — double-check before saving.
+4. Use add_announcement / delete_announcement for class notices.
+5. Use add_exam / delete_exam for upcoming tests and events.
+6. Use add_override / delete_override for holiday or special-schedule days.
+7. Confirm your plan with me before calling set_week or save_timetable.
+8. Every day must sum to exactly 30 spans — double-check before saving.
 
 I'll give you a schedule (screenshot description, slide text, or plain text). Convert it to the data model and apply it.
 ```
