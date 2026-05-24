@@ -119,7 +119,7 @@ The `updatedBy` field in the saved data will be `agent:<name>` so you can tell a
 
 Paste this at the start of your conversation (after attaching the MCP server or pasting the curl docs):
 
-```
+```text
 You are helping me update the S2-05 school timetable.
 
 Data model:

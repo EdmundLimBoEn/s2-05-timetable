@@ -41,7 +41,8 @@ export async function verifyPassword(password, hash) {
 
 export function getApiTokens() {
   try {
-    return JSON.parse(process.env.API_TOKENS_JSON || '[]')
+    const parsed = JSON.parse(process.env.API_TOKENS_JSON || '[]')
+    return Array.isArray(parsed) ? parsed : []
   } catch (err) {
     console.error('[getApiTokens] API_TOKENS_JSON parse failed:', err.message)
     return []
@@ -49,10 +50,14 @@ export function getApiTokens() {
 }
 
 export async function getAdminFromRequest(req) {
-  // Cookie session (web admin)
+  // Cookie session (web admin) — only use if the session is valid
   const cookieHeader = req.headers['cookie'] || ''
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))
-  if (match) return verifySession(decodeURIComponent(match[1]))
+  if (match) {
+    const username = await verifySession(decodeURIComponent(match[1]))
+    if (username) return username
+    // stale/invalid cookie — fall through to Bearer token
+  }
 
   // Bearer token (agent / API access)
   const auth = req.headers['authorization'] || ''

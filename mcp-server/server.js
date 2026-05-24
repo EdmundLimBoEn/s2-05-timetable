@@ -56,6 +56,11 @@ const blockSchema = z.object({
   style: z.string().describe('CSS/subject key, e.g. "el", "math", or a custom subject key'),
 })
 
+const daySchema = z.array(blockSchema).refine(
+  blocks => blocks.reduce((sum, b) => sum + b.span, 0) === 30,
+  { message: 'Each day must have blocks whose spans sum to exactly 30 (08:00–14:00, 30 × 20 min)' }
+)
+
 const server = new McpServer({
   name:    'timetable',
   version: '1.0.0',
@@ -127,7 +132,7 @@ server.tool(
   'Replace all 5 days of one timetable week (odd or even). Each day is an array of block objects; all 5 days must each have blocks whose spans sum to exactly 30 (each span = 20 minutes; 30 spans = 08:00–14:00). The other week, exams, announcements, overrides, and custom subjects are left untouched.',
   {
     week:          z.enum(['odd', 'even']).describe('"odd" or "even" week'),
-    days:          z.array(z.array(blockSchema)).min(5).max(5).describe('Array of exactly 5 days [Mon, Tue, Wed, Thu, Fri]; each day is an array of block objects'),
+    days:          z.array(daySchema).min(5).max(5).describe('Array of exactly 5 days [Mon, Tue, Wed, Thu, Fri]; each day is an array of block objects whose spans must sum to 30'),
     extendedHours: z.boolean().optional().describe('If true, extend the time grid to 15:00 (30 cols instead of 21). Omit to leave unchanged.'),
   },
   async ({ week, days, extendedHours }) => {
@@ -153,9 +158,9 @@ server.tool(
   'Advanced: POST a full payload directly to /api/save. Prefer set_week or add_custom_subject instead. Use this only when you need to update multiple sections atomically. Always call get_timetable first and spread its result into your payload to avoid losing existing data.',
   {
     timetable:      z.object({
-      odd:  z.array(z.array(blockSchema)),
-      even: z.array(z.array(blockSchema)),
-    }).describe('Full timetable with odd and even weeks, each with 5 days'),
+      odd:  z.array(daySchema),
+      even: z.array(daySchema),
+    }).describe('Full timetable with odd and even weeks, each with 5 days; each day\'s spans must sum to 30'),
     exams:          z.array(z.object({
       id:        z.string().optional(),
       label:     z.string(),
