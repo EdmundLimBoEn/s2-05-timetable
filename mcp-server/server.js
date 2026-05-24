@@ -63,7 +63,7 @@ const daySchema = z.array(blockSchema).refine(
 
 const server = new McpServer({
   name:    'timetable',
-  version: '1.0.0',
+  version: '1.1.0',
 })
 
 // ── get_timetable ────────────────────────────────────────────────────────────
@@ -146,6 +146,192 @@ server.tool(
       if (typeof extendedHours === 'boolean') payload.extendedHours = extendedHours
       const result = await apiPost('/api/save', payload)
       return ok({ ok: true, updatedAt: result.updatedAt, updatedBy: result.updatedBy })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── delete_custom_subject ────────────────────────────────────────────────────
+server.tool(
+  'delete_custom_subject',
+  'Delete a custom subject by key. Any timetable blocks or override blocks using that key are rewritten to style "empty" before saving.',
+  {
+    key: z.string().describe('The custom subject key to delete, e.g. "museum"'),
+  },
+  async ({ key }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const customs = data.customSubjects ?? []
+      if (!customs.some(s => s.key === key)) return err(`Custom subject key "${key}" not found`)
+      const updatedCustoms = customs.filter(s => s.key !== key)
+      const rewrite = blocks => (blocks || []).map(b => b.style === key ? { ...b, style: 'empty' } : b)
+      const updatedTimetable = {
+        odd:  (data.timetable?.odd  || []).map(rewrite),
+        even: (data.timetable?.even || []).map(rewrite),
+      }
+      const updatedOverrides = (data.overrides || []).map(ovr =>
+        ovr.blocks ? { ...ovr, blocks: rewrite(ovr.blocks) } : ovr
+      )
+      const result = await apiPost('/api/save', {
+        ...data,
+        timetable:      updatedTimetable,
+        overrides:      updatedOverrides,
+        customSubjects: updatedCustoms,
+      })
+      return ok({ ok: true, updatedAt: result.updatedAt })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── add_announcement ─────────────────────────────────────────────────────────
+server.tool(
+  'add_announcement',
+  'Post a new announcement. The server assigns id, createdAt, and createdBy automatically.',
+  {
+    title:     z.string().min(1).max(100).describe('Announcement title (required, ≤100 chars)'),
+    body:      z.string().max(5000).optional().describe('Optional body text (≤5000 chars)'),
+    category:  z.enum(['general', 'homework', 'exam', 'event']).describe('Category'),
+    eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Optional ISO date for exam/event/homework categories, e.g. "2026-06-10"'),
+  },
+  async ({ title, body, category, eventDate }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const annc = { title, body: body ?? '', category }
+      if (eventDate) annc.eventDate = eventDate
+      const updated = [...(data.announcements ?? []), annc]
+      const result  = await apiPost('/api/save', { ...data, announcements: updated })
+      return ok({ ok: true, updatedAt: result.updatedAt, announcements: result.announcements })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── delete_announcement ──────────────────────────────────────────────────────
+server.tool(
+  'delete_announcement',
+  'Delete an announcement by its server-assigned id. Call get_timetable first to find the id.',
+  {
+    id: z.string().describe('The id of the announcement to delete'),
+  },
+  async ({ id }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const anncs = data.announcements ?? []
+      if (!anncs.some(a => a.id === id)) return err(`Announcement id "${id}" not found`)
+      const updated = anncs.filter(a => a.id !== id)
+      const result  = await apiPost('/api/save', { ...data, announcements: updated })
+      return ok({ ok: true, updatedAt: result.updatedAt })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── add_exam ─────────────────────────────────────────────────────────────────
+server.tool(
+  'add_exam',
+  'Add an exam or event to the events list. The server assigns an id.',
+  {
+    label:   z.string().min(1).describe('Event label, e.g. "Math Common Test"'),
+    date:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('ISO date, e.g. "2026-06-10"'),
+    time:    z.string().nullable().optional().describe('Optional start time, e.g. "09:00"'),
+    endTime: z.string().nullable().optional().describe('Optional end time, e.g. "11:00"'),
+    type:    z.enum(['exam', 'test', 'event', 'holiday', 'other']).optional().describe('Event type (default "exam")'),
+    details: z.string().optional().describe('Optional additional details'),
+  },
+  async ({ label, date, time, endTime, type, details }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const ev = {
+        label, date,
+        time:           time    ?? null,
+        endTime:        endTime ?? null,
+        type:           type    ?? 'exam',
+        details:        details ?? '',
+        id:             '',
+        announcementId: null,
+        autoRemove:     null,
+      }
+      const updated = [...(data.exams ?? []), ev]
+      const result  = await apiPost('/api/save', { ...data, exams: updated })
+      return ok({ ok: true, updatedAt: result.updatedAt, exams: result.exams })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── delete_exam ──────────────────────────────────────────────────────────────
+server.tool(
+  'delete_exam',
+  'Delete an exam/event by its id. Call get_timetable first to find the id.',
+  {
+    id: z.string().describe('The id of the exam/event to delete'),
+  },
+  async ({ id }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const exams = data.exams ?? []
+      if (!exams.some(e => e.id === id)) return err(`Exam id "${id}" not found`)
+      const updated = exams.filter(e => e.id !== id)
+      const result  = await apiPost('/api/save', { ...data, exams: updated })
+      return ok({ ok: true, updatedAt: result.updatedAt })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── add_override ─────────────────────────────────────────────────────────────
+server.tool(
+  'add_override',
+  'Add a day override for a specific date. Use type "holiday" to mark a day off (no blocks needed), or type "custom" to supply a custom block schedule for that day. Only one override per date is allowed.',
+  {
+    date:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('ISO date to override, e.g. "2026-06-10"'),
+    type:   z.enum(['holiday', 'custom']).describe('"holiday" marks the day off; "custom" requires a blocks array'),
+    label:  z.string().min(1).describe('Label for the override, e.g. "Youth Day" or "Modified Schedule"'),
+    blocks: z.array(blockSchema).optional().describe('Required when type is "custom". Spans must sum to 30.'),
+  },
+  async ({ date, type, label, blocks }) => {
+    try {
+      if (type === 'custom') {
+        if (!blocks?.length) return err('blocks are required when type is "custom"')
+        const total = blocks.reduce((s, b) => s + b.span, 0)
+        if (total !== 30) return err(`blocks spans must sum to 30, got ${total}`)
+      }
+      const data = await apiGet('/api/admin-data')
+      const overrides = data.overrides ?? []
+      if (overrides.some(o => o.date === date)) {
+        return err(`An override already exists for ${date}. Delete it first with delete_override.`)
+      }
+      const ovr = { date, type, label }
+      if (type === 'custom') ovr.blocks = blocks
+      const result = await apiPost('/api/save', { ...data, overrides: [...overrides, ovr] })
+      return ok({ ok: true, updatedAt: result.updatedAt })
+    } catch (e) {
+      return err(e.message)
+    }
+  }
+)
+
+// ── delete_override ──────────────────────────────────────────────────────────
+server.tool(
+  'delete_override',
+  'Remove a day override by its date.',
+  {
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('ISO date of the override to remove, e.g. "2026-06-10"'),
+  },
+  async ({ date }) => {
+    try {
+      const data = await apiGet('/api/admin-data')
+      const overrides = data.overrides ?? []
+      if (!overrides.some(o => o.date === date)) return err(`No override found for ${date}`)
+      const result = await apiPost('/api/save', { ...data, overrides: overrides.filter(o => o.date !== date) })
+      return ok({ ok: true, updatedAt: result.updatedAt })
     } catch (e) {
       return err(e.message)
     }
