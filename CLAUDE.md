@@ -422,7 +422,11 @@ pm2 restart timetable       # restart production
 
 ## Tests / verification checklist
 
-There is no automated test runner. Use this manual checklist after any change to the data model or admin panel:
+```bash
+npm test   # or: node --test tests/*.test.mjs
+```
+
+Automated coverage today: event auto-remove (`tests/pruneExpiredEvents.test.mjs`) and Sunday week-flip (`tests/week.test.mjs`). Also use this manual checklist after any change to the data model or admin panel:
 
 ### Custom subjects
 ```bash
