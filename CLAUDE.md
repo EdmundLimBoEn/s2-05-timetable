@@ -196,7 +196,8 @@ const TERM_START = { date: '2026-01-05', week: 'even' }
 
 - Jan 5 = first Monday of Term 1 Week 1 = EVEN
 - Weeks alternate continuously across all terms and holidays (counter never resets)
-- `calcWeek()` computes `Math.floor((Date.now() - start) / msPerWeek) % 2` against the baseline
+- The school week flips at **00:00 Sunday**: Saturday still shows the week that just ran; Sunday already shows the coming week (so students opening the site on Sunday see Monday's timetable)
+- `calcWeek()` counts days from `TERM_START` and uses `Math.floor((days + 1) / 7)` so Sunday is the first day of the next week. Shared implementation: `lib/week.js`
 
 **2026 term dates (SST Singapore):**
 
@@ -415,13 +416,17 @@ pm2 restart timetable       # restart production
 
 ## Service worker
 
-`sw.js` cache name is currently `tt-v9`. Bump it (`tt-v10`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+`sw.js` cache name is currently `tt-v11`. Bump it (`tt-v12`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
 
 ---
 
 ## Tests / verification checklist
 
-There is no automated test runner. Use this manual checklist after any change to the data model or admin panel:
+```bash
+npm test   # or: node --test tests/*.test.mjs
+```
+
+Automated coverage today: event auto-remove (`tests/pruneExpiredEvents.test.mjs`) and Sunday week-flip (`tests/week.test.mjs`). Also use this manual checklist after any change to the data model or admin panel:
 
 ### Custom subjects
 ```bash
