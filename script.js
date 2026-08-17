@@ -416,16 +416,15 @@ function decodeTheme(code) {
 // ── Week auto-detection ────────────────────────────────────────
 function calcWeek(now = Date.now()) {
   const days = Math.floor((now - localStartOfDay(TERM_START.date)) / 86_400_000)
-  const weeks = Math.floor(days / 7)
+  const weeks = Math.floor((days + 1) / 7)
   const startIsOdd = TERM_START.week === 'odd'
   return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
 }
 
-function calcTermWeek() {
+function calcTermWeek(now = Date.now()) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const now = Date.now()
   for (let i = TERMS_2026.length - 1; i >= 0; i--) {
-    const start = localStartOfDay(TERMS_2026[i].start)
+    const start = localStartOfDay(TERMS_2026[i].start) - 86_400_000
     if (now >= start) {
       const w = Math.floor((now - start) / msPerWeek) + 1
       return w <= 10 ? { term: TERMS_2026[i].term, week: w } : null
@@ -435,10 +434,7 @@ function calcTermWeek() {
 }
 
 function weekForDate(d) {
-  const days = Math.floor((d.getTime() - localStartOfDay(TERM_START.date)) / 86_400_000)
-  const weeks = Math.floor(days / 7)
-  const startIsOdd = TERM_START.week === 'odd'
-  return ((weeks % 2 + 2) % 2 === 0) === startIsOdd ? 'odd' : 'even'
+  return calcWeek(d.getTime())
 }
 
 function firstRealBlock(schedule) {
@@ -616,12 +612,14 @@ let OVERRIDES = []
 
 // Calendar date represented by a given (wk, dayIdx) row,
 // computed relative to today. If wk !== calcWeek(), jumps to next week.
+// Sunday already belongs to the coming week, so its Monday is tomorrow.
 function dateForRow(wk, di) {
   const today  = new Date(); today.setHours(0, 0, 0, 0)
-  const dow    = today.getDay() || 7                          // Mon=1 … Sun=7
+  const dow    = today.getDay()
   const monday = new Date(today)
-  monday.setDate(today.getDate() - (dow - 1))                 // walk back to Monday
-  if (calcWeek() !== wk) monday.setDate(monday.getDate() + 7) // jump to nearest other-parity week
+  if (dow === 0) monday.setDate(today.getDate() + 1)
+  else monday.setDate(today.getDate() - (dow - 1))
+  if (calcWeek(today.getTime()) !== wk) monday.setDate(monday.getDate() + 7)
   const d = new Date(monday)
   d.setDate(monday.getDate() + di)
   return d
