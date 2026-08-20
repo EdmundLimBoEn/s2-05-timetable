@@ -14,7 +14,7 @@ Live school timetable for S2-05, SST Singapore — Term 2 2026.
 - **Now bar** — highlights the current class and counts down to the next one
 - **Exam countdown** — amber bar appears within 7 days of each exam
 - **Schedule overrides** — admin marks specific dates as holidays or one-off custom days
-- **Announcements** — admin posts class-wide notices; new ones pop up as toasts within 10 s
+- **Announcements** — admin posts class-wide notices; new ones pop up as toasts within 30 s
 - **Personal journal** — free-form notes saved on-device, side-by-side with announcements
 - **Subject notes** — per-cell sticky notes, also on-device
 - **PWA** — installable, works offline with cached data
@@ -86,7 +86,7 @@ The admin panel (`/admin`) lets authorised users:
 - Post and delete class announcements
 - Add schedule overrides (holidays, custom days)
 
-Changes are live on the public site within 10 seconds.
+Changes are live on the public site within 30 seconds, or immediately when the tab is focused.
 
 ---
 

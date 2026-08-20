@@ -24,6 +24,9 @@ function setExtendedHours(extended) {
   END_MIN  = ALL_MINS[ALL_MINS.length - 1] + 20
 }
 
+const POLL_MS = 30_000
+const TICK_MS = 60_000
+
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri']
 
 const BUILTIN_ABBREV = Object.freeze({
@@ -1252,7 +1255,18 @@ function tick() {
     if (glanceBar) glanceBar.style.display = 'none'
   }
 
-  // Position the time line
+  positionTimeLine(nm)
+}
+
+function positionTimeLine(nm = getEffectiveMins()) {
+  const weekday = getEffectiveDow() >= 1 && getEffectiveDow() <= 5
+  const inHours = nm >= ALL_MINS[0] && nm <= END_MIN
+  const todayHol = !demoMode ? isHoliday(new Date()) : null
+  if (!weekday || !inHours || todayHol) {
+    tl.style.display = 'none'
+    return
+  }
+
   const cols = colPositions()
   if (!cols) { tl.style.display = 'none'; return }
 
@@ -1671,9 +1685,9 @@ setTimeout(async () => {
   checkExams()
 
   // Fetch live data; re-render timetable/exams only when updatedAt changes.
-  // On each poll, /api/version is checked first (cheap Edge Config read served
-  // from CDN cache). /api/data (Blob read) is only fetched when the version
-  // differs from what we last applied, or on the very first load.
+  // Polls /api/version every POLL_MS while the tab is visible. /api/data is
+  // only fetched when the version differs from what we last applied, or on
+  // the very first load. Hidden tabs pause polling and CSS animations.
   let lastUpdatedAt = undefined // undefined = never loaded; null = loaded, no saves yet
 
   async function applyRemoteData(remote) {
@@ -1705,7 +1719,8 @@ setTimeout(async () => {
     scheduleEventNotifs()
   }
 
-  async function refreshData() {
+  refreshData = async function() {
+    if (document.hidden && lastUpdatedAt !== undefined) return
     try {
       // Skip the full blob fetch if the version token says nothing has changed.
       // On initial load (lastUpdatedAt === undefined) always fetch.
@@ -1730,8 +1745,12 @@ setTimeout(async () => {
   }
 
   await refreshData()
-  setInterval(refreshData, 10_000)              // poll every 10 s
-  setTimeout(() => location.reload(), 3_600_000) // hard reload every hour
+  if (document.hidden) {
+    document.documentElement.classList.add('tab-hidden')
+  } else {
+    startLivePoll()
+    startTickClock()
+  }
 
   scrollToNow()
   updateOnlineStatus()
@@ -1815,5 +1834,56 @@ document.getElementById('installBtn')?.addEventListener('click', async () => {
 window.addEventListener('online',  updateOnlineStatus)
 window.addEventListener('offline', updateOnlineStatus)
 
-setInterval(tick, 60_000)
-wrap.addEventListener('scroll', tick)
+let pollTimer = null
+let tickTimeout = null
+let tickInterval = null
+let scrollTickRaf = 0
+let refreshData = async () => {}
+
+function stopLivePoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+}
+
+function startLivePoll() {
+  stopLivePoll()
+  pollTimer = setInterval(() => { refreshData() }, POLL_MS)
+}
+
+function stopTickClock() {
+  if (tickTimeout) { clearTimeout(tickTimeout); tickTimeout = null }
+  if (tickInterval) { clearInterval(tickInterval); tickInterval = null }
+}
+
+function startTickClock() {
+  stopTickClock()
+  const delay = Math.max(250, TICK_MS - (Date.now() % TICK_MS))
+  tickTimeout = setTimeout(() => {
+    tickTimeout = null
+    tick()
+    tickInterval = setInterval(tick, TICK_MS)
+  }, delay)
+}
+
+function onVisibilityChange() {
+  const hidden = document.hidden
+  document.documentElement.classList.toggle('tab-hidden', hidden)
+  if (hidden) {
+    stopLivePoll()
+    stopTickClock()
+    return
+  }
+  tick()
+  refreshData()
+  startLivePoll()
+  startTickClock()
+}
+
+document.addEventListener('visibilitychange', onVisibilityChange)
+
+wrap.addEventListener('scroll', () => {
+  if (scrollTickRaf) return
+  scrollTickRaf = requestAnimationFrame(() => {
+    scrollTickRaf = 0
+    positionTimeLine()
+  })
+}, { passive: true })
