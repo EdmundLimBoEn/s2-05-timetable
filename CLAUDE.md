@@ -15,7 +15,7 @@ S2-05 SST Singapore school timetable, Term 2 2026.
 
 ```
 Public site (index.html / script.js)
-  └─ fetch /api/data (every 10 s, cache: no-store) ──► Express (server.js)
+  └─ fetch /api/version then /api/data (every 30 s while visible) ──► Express (server.js)
                                                           └─ getData() → local JSON file
                                                                 └─ fallback: hardcoded SEED
 
@@ -44,7 +44,7 @@ Admin panel (/admin/index.html + admin/admin.js)
 | `favicon.svg` | Browser-tab favicon — 32×32 pixel-art T |
 | `icon.svg` | PWA home-screen icon — 512×512 pixel-art T |
 | `manifest.json` | PWA manifest |
-| `sw.js` | Service worker (`tt-v7`): network-first `/api/data`, cache-first static, bypass `/admin` |
+| `sw.js` | Service worker (`tt-v12`): network-first `/api/data`, cache-first static, bypass `/api/*` and `/admin` |
 
 ### API (Express routes via server.js)
 | File | Role |
@@ -109,7 +109,7 @@ Array of `{ id, title, body, category, createdAt, createdBy }` stored in the blo
 - `createdAt` — ISO timestamp, assigned server-side
 - `createdBy` — username, assigned server-side
 
-Admin panel: ANNCS tab — add/delete announcements, then SAVE. Saved instantly to blob; public site picks up within 10 s.
+Admin panel: ANNCS tab — add/delete announcements, then SAVE. Saved instantly to blob; public site picks up within 30 s (or immediately when the tab is focused).
 
 Public site: shown in the bottom panel (ANNOUNCEMENTS pane). New unseen announcements trigger a top-right toast (auto-dismiss 6 s, or ✕ to close). Seen state stored in `localStorage['anncs-seen']`.
 
@@ -137,7 +137,7 @@ Array of user-defined subject types stored in `timetable-data.json`:
 
 CSS rules for custom subjects are injected at runtime by `installCustomStyles()` into `<style id="custom-subjects">` in `<head>`, after `#theme-ovr`. No changes to `style.css` are needed.
 
-**Admin flow:** SUBJECTS tab → add form → save → public site picks up within 10 s. Deleting a subject that is still in use shows a destructive-confirm modal listing every timetable row / override block using it; on confirm those blocks are rewritten to `style: 'empty'`; on save failure the in-memory state rolls back.
+**Admin flow:** SUBJECTS tab → add form → save → public site picks up within 30 s (or immediately when the tab is focused). Deleting a subject that is still in use shows a destructive-confirm modal listing every timetable row / override block using it; on confirm those blocks are rewritten to `style: 'empty'`; on save failure the in-memory state rolls back.
 
 **Adding a built-in subject type** (not a custom one) still requires four coordinated changes:
 1. `style.css` — add `--c-<key>` in `:root` and `.cell.<key>` / `.cell.<key> .subj` rules
@@ -239,12 +239,15 @@ async function refreshData() {
   rebuild(); checkExams()
 }
 await refreshData()
-setInterval(refreshData, 10_000)               // poll every 10 s
-setTimeout(() => location.reload(), 3_600_000) // hard reload every hour
+if (!document.hidden) {
+  startLivePoll()   // /api/version every 30 s; pause while the tab is hidden
+  startTickClock()  // aligned to the next minute boundary
+}
 ```
 
 - Public site renders immediately from hardcoded fallback, then overlays server data
-- Announcements are synced on every poll (not just when `updatedAt` changes)
+- Polling and CSS animations pause on `visibilitychange` (class `tab-hidden`)
+- `/api/data` is only fetched when `/api/version` reports a new `updatedAt`
 - Admin panel reads from `/api/admin-data` (no edge cache, requires auth cookie)
 
 ---
@@ -408,7 +411,7 @@ pm2 restart timetable       # restart production
 - Retro CRT aesthetic: scanlines overlay (`.scanlines`), blinking cursor (`.cursor`)
 - Cell row height: **64px fixed**
 - Today's row: `.today-row` — day label glows red
-- Active cell: `.cell.now` — brightness boost + red inset ring
+- Active cell: `.cell.now` — white overlay + red inset ring (no CSS `filter`)
 - Colour scheme: dark (`#080808` bg), red accent (`#ff3b3b`)
 - Icons: pixel-art rects only — no `<text>` or font elements in SVG files
 
@@ -416,7 +419,7 @@ pm2 restart timetable       # restart production
 
 ## Service worker
 
-`sw.js` cache name is currently `tt-v11`. Bump it (`tt-v12`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
+`sw.js` cache name is currently `tt-v12`. Bump it (`tt-v13`, etc.) whenever static assets change significantly, to force clients to pick up the new files.
 
 ---
 
@@ -426,7 +429,7 @@ pm2 restart timetable       # restart production
 npm test   # or: node --test tests/*.test.mjs
 ```
 
-Automated coverage today: event auto-remove (`tests/pruneExpiredEvents.test.mjs`) and Sunday week-flip (`tests/week.test.mjs`). Also use this manual checklist after any change to the data model or admin panel:
+Automated coverage today: event auto-remove (`tests/pruneExpiredEvents.test.mjs`), Sunday week-flip (`tests/week.test.mjs`), and tab-energy contracts (`tests/energy.test.mjs`). Also use this manual checklist after any change to the data model or admin panel:
 
 ### Custom subjects
 ```bash
@@ -438,7 +441,7 @@ node -e "JSON.parse(require('fs').readFileSync('data/timetable-data.json'))" && 
 ```
 
 **Admin SUBJECTS tab (manual):**
-- Add "Museum Tour" (key `museum`, color `#9b59b6`, abbrev `MUSEUM`, opacity `0.18`, text `#ffffff`) → save → public site shows the styled cell within 10 s
+- Add "Museum Tour" (key `museum`, color `#9b59b6`, abbrev `MUSEUM`, opacity `0.18`, text `#ffffff`) → save → public site shows the styled cell within 30 s
 - Assign `museum` to an ODD/MON block → cell renders with correct tint and `MUSEUM` label; now-bar shows full label when active
 - Delete `museum` while it's still used in a block → modal lists the row location → **CANCEL** keeps everything unchanged; **CONFIRM DELETE** rewrites the block to `empty` and saves
 - Try invalid inputs and verify server rejects them with a clear toast error:

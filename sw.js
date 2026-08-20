@@ -1,4 +1,4 @@
-const CACHE    = 'tt-v11'
+const CACHE    = 'tt-v12'
 const PRECACHE = ['./', './index.html', './script.js', './style.css', './icon.svg', './favicon.svg', './manifest.json']
 
 self.addEventListener('install', e => {
@@ -16,8 +16,10 @@ self.addEventListener('activate', e => {
 })
 
 self.addEventListener('fetch', e => {
+  const pathname = new URL(e.request.url).pathname
+
   // /api/data — network-first, fall back to cache for offline
-  if (new URL(e.request.url).pathname === '/api/data') {
+  if (pathname === '/api/data') {
     e.respondWith(
       caches.open(CACHE).then(async cache => {
         try {
@@ -36,8 +38,9 @@ self.addEventListener('fetch', e => {
     return
   }
 
-  // Admin routes — always network (no caching)
-  if (new URL(e.request.url).pathname.startsWith('/admin')) {
+  // Other API + admin — let the browser hit the network. Do not intercept
+  // cheap /api/version polls (cache-first would stall live updates).
+  if (pathname.startsWith('/api/') || pathname.startsWith('/admin')) {
     return
   }
 
