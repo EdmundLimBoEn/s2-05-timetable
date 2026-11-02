@@ -20,7 +20,8 @@ export async function signSession(username) {
 export async function verifySession(token) {
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ['HS256'] })
-    return payload.sub ?? null
+    return typeof payload.sub === 'string' && getAdmins().some(admin => admin.username === payload.sub)
+      ? payload.sub : null
   } catch {
     return null
   }
@@ -28,15 +29,26 @@ export async function verifySession(token) {
 
 export function getAdmins() {
   try {
-    return JSON.parse(process.env.ADMINS_JSON || '[]')
+    const parsed = JSON.parse(process.env.ADMINS_JSON || '[]')
+    return Array.isArray(parsed) ? parsed : []
   } catch (err) {
-    console.error('[getAdmins] ADMINS_JSON parse failed:', err.message)
+    console.error('[getAdmins] Invalid admin configuration')
     return []
   }
 }
 
+let activeComparisons = 0
+
 export async function verifyPassword(password, hash) {
-  return bcrypt.compare(password, hash)
+  // Bound expensive bcrypt work so invalid credentials cannot queue unlimited CPU work.
+  if (activeComparisons >= 4) {
+    const error = new Error('Authentication busy')
+    error.status = 429
+    throw error
+  }
+  activeComparisons++
+  try { return await bcrypt.compare(password, hash) }
+  finally { activeComparisons-- }
 }
 
 export function getApiTokens() {
@@ -44,7 +56,7 @@ export function getApiTokens() {
     const parsed = JSON.parse(process.env.API_TOKENS_JSON || '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch (err) {
-    console.error('[getApiTokens] API_TOKENS_JSON parse failed:', err.message)
+    console.error('[getApiTokens] Invalid token configuration')
     return []
   }
 }
@@ -66,11 +78,12 @@ export async function getAdminFromRequest(req) {
   const bearerMatch = auth.match(/^Bearer\s+(\S+)$/)
   if (!bearerMatch) return null
   const token = bearerMatch[1]
+  if (Buffer.byteLength(token) > 72) return null
 
   const apiTokens = getApiTokens()
   for (const entry of apiTokens) {
     if (entry && typeof entry.name === 'string' && typeof entry.tokenHash === 'string') {
-      const valid = await bcrypt.compare(token, entry.tokenHash)
+      const valid = await verifyPassword(token, entry.tokenHash)
       if (valid) return `agent:${entry.name}`
     }
   }

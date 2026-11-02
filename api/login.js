@@ -1,43 +1,26 @@
 import { getAdmins, verifyPassword, signSession, sessionCookie } from './_lib/auth.js'
 
-// In-memory rate limit — per function instance, resets on cold start.
-// Good enough for a school admin page; upgrade to a store if needed.
-const attempts = new Map()  // ip → { count, resetAt }
-const MAX  = 5
-const WIN  = 15 * 60 * 1000   // 15 min
+import { createRateLimit } from './_lib/rate-limit.js'
 
-function checkRate(ip) {
-  const now  = Date.now()
-  for (const [key, value] of attempts) {
-    if (value.resetAt < now) attempts.delete(key)
-  }
-  const rec  = attempts.get(ip)
-  if (!rec || rec.resetAt < now) {
-    attempts.set(ip, { count: 1, resetAt: now + WIN })
-    return true
-  }
-  if (rec.count >= MAX) return false
-  rec.count++
-  return true
-}
-
-function clearRate(ip) { attempts.delete(ip) }
+const windowMs = 15 * 60 * 1000
+const sourceAttempts = createRateLimit({ max: 30, windowMs })
+const accountAttempts = createRateLimit({ max: 5, windowMs })
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-
-  // Express trusts only explicitly configured, verified ingress addresses.
-  const ip = req.ip || req.socket?.remoteAddress || 'unknown'
-  if (!checkRate(ip)) {
-    return res.status(429).json({ error: 'Too many attempts — try again in 15 minutes.' })
-  }
 
   const body     = req.body || {}
   const username = typeof body.username === 'string' ? body.username.toLowerCase().trim() : ''
   const password = typeof body.password === 'string' ? body.password : ''
 
-  if (!username || !password) {
+  if (!username || username.length > 128 || !password || Buffer.byteLength(password) > 72) {
     return res.status(400).json({ error: 'Username and password are required.' })
+  }
+
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown'
+  if (!sourceAttempts.take(ip) || !accountAttempts.take(username)) {
+    res.setHeader('Retry-After', '900')
+    return res.status(429).json({ error: 'Too many attempts — try again in 15 minutes.' })
   }
 
   const admins = getAdmins()
@@ -48,7 +31,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid username or password.' })
   }
 
-  clearRate(ip)
+  accountAttempts.clear(username)
   const token = await signSession(username)
   res.setHeader('Set-Cookie', sessionCookie(token))
   res.status(200).json({ username })

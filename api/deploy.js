@@ -53,8 +53,17 @@ export default function deployHandler(req, res) {
     pm2 restart timetable-mcp 2>/dev/null || true
   `
 
-  exec(script, { shell: '/bin/bash', env: { ...process.env, DEPLOY_BRANCH: branch, DEPLOY_PM2: pm2Name } }, (err, stdout, stderr) => {
+  exec(script, { shell: '/bin/bash', env: deploymentEnvironment(branch, pm2Name) }, (err, stdout, stderr) => {
     if (err) console.error('[deploy] error:', stderr.trim())
     else console.log('[deploy] ok:', stdout.trim())
   })
+}
+
+export function deploymentEnvironment(branch, pm2Name) {
+  // A production webhook must not inject its credentials or PORT into the dev app.
+  const env = { DEPLOY_BRANCH: branch, DEPLOY_PM2: pm2Name }
+  for (const key of ['PATH', 'HOME', 'PM2_HOME', 'LANG']) {
+    if (process.env[key] !== undefined) env[key] = process.env[key]
+  }
+  return env
 }
