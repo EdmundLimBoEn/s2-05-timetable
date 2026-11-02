@@ -400,7 +400,14 @@ if (MCP_PORT) {
   const { createServer } = await import('node:http')
   const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
 
-  const httpServer = createServer(async (req, res) => {
+  const handleRequest = async (req, res) => {
+    res.on('finish', () => console.log(JSON.stringify({
+      event: 'mcp-request', time: new Date().toISOString(), method: req.method,
+      path: (req.url || '').split('?')[0].slice(0, 256), status: res.statusCode,
+      peer: req.socket.remoteAddress,
+      forwardedForUnverified: String(req.headers['x-forwarded-for'] || '').slice(0, 256),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 256),
+    })))
     const reqUrl = req.url?.split('?')[0]
 
     if (reqUrl !== '/mcp') {
@@ -421,6 +428,7 @@ if (MCP_PORT) {
     // validate the token by calling /api/me
     try {
       const check = await fetch(`${BASE_URL}/api/me`, {
+        signal: AbortSignal.timeout(5000),
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!check.ok) {
@@ -438,7 +446,16 @@ if (MCP_PORT) {
     let parsedBody
     if (req.method === 'POST') {
       const chunks = []
-      for await (const chunk of req) chunks.push(chunk)
+      let size = 0
+      for await (const chunk of req) {
+        size += chunk.length
+        if (size > 100 * 1024) {
+          res.writeHead(413, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Request too large' }))
+          return
+        }
+        chunks.push(chunk)
+      }
       const raw = Buffer.concat(chunks).toString()
       if (raw) {
         try {
@@ -456,6 +473,14 @@ if (MCP_PORT) {
     await mcpServer.connect(transport)
     await transport.handleRequest(req, res, parsedBody)
     res.on('finish', () => { transport.close(); mcpServer.close() })
+  }
+  const httpServer = createServer((req, res) => {
+    handleRequest(req, res).catch(() => {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Internal server error' }))
+      } else res.destroy()
+    })
   })
 
   httpServer.listen(MCP_PORT, () => {

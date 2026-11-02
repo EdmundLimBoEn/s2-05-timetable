@@ -66,7 +66,8 @@ test('poll interval is at least 30 seconds', () => {
 })
 
 test('no hourly hard reload', () => {
-  assert.equal(/location\.reload\(\)/.test(js), false)
+  const withoutManualRefresh = js.replace("document.getElementById('swRefresh').addEventListener('click', () => location.reload())", '')
+  assert.equal(/location\.reload\(\)/.test(withoutManualRefresh), false)
 })
 
 test('scroll handler is rAF-throttled', () => {
