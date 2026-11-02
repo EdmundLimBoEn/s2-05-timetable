@@ -10,7 +10,7 @@ test('malformed cookies fail closed', async () => {
 
 test('HTTP security boundaries', async t => {
   const child = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, PORT: '0', ADMINS_JSON: '[]', API_TOKENS_JSON: '[]' },
+    env: { ...process.env, PORT: '0', ADMINS_JSON: '[]', API_TOKENS_JSON: '[]', TRUSTED_PROXY_IPS: '', BLOCKED_CLIENT_IPS: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   t.after(() => child.kill())
@@ -43,6 +43,21 @@ test('HTTP security boundaries', async t => {
     })
     assert.equal(response.status, i < 5 ? 401 : 429)
   }
+  child.kill()
+  await once(child, 'exit')
+})
+
+ test('verified proxy allows targeted containment', async t => {
+  const child = spawn(process.execPath, ['server.js'], {
+    env: { ...process.env, PORT: '0', TRUSTED_PROXY_IPS: '::ffff:127.0.0.1', BLOCKED_CLIENT_IPS: '192.0.2.50' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  t.after(() => child.kill())
+  const [chunk] = await once(child.stdout, 'data')
+  const port = chunk.toString().match(/port (\d+)/)[1]
+  const base = `http://127.0.0.1:${port}`
+  assert.equal((await fetch(base, { headers: { 'X-Forwarded-For': '192.0.2.50' } })).status, 403)
+  assert.equal((await fetch(base, { headers: { 'X-Forwarded-For': '192.0.2.51' } })).status, 200)
   child.kill()
   await once(child, 'exit')
 })

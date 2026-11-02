@@ -16,6 +16,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3000
 
 const app = express()
+const trustedProxies = new Set((process.env.TRUSTED_PROXY_IPS || '').split(',').filter(Boolean))
+app.set('trust proxy', address => trustedProxies.has(address))
+const blockedClients = new Set((process.env.BLOCKED_CLIENT_IPS || '').split(',').filter(Boolean))
 app.disable('x-powered-by')
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -26,11 +29,12 @@ app.use((req, res, next) => {
     console.log(JSON.stringify({
       event: 'request', time: new Date().toISOString(), method: req.method,
       path: req.path.slice(0, 256), status: res.statusCode,
-      peer: req.socket.remoteAddress,
+      peer: req.socket.remoteAddress, client: req.ip,
       forwardedForUnverified: String(req.headers['x-forwarded-for'] || '').slice(0, 256),
       userAgent: String(req.headers['user-agent'] || '').slice(0, 256),
     }))
   })
+  if (blockedClients.has(req.ip)) return res.status(403).json({ error: 'Forbidden' })
   next()
 })
 app.use(express.json({ limit: '100kb', inflate: false }))

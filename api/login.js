@@ -26,8 +26,8 @@ function clearRate(ip) { attempts.delete(ip) }
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  // Proxy headers are attacker-controlled until the ingress trust chain is verified.
-  const ip = req.socket?.remoteAddress || 'unknown'
+  // Express trusts only explicitly configured, verified ingress addresses.
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown'
   if (!checkRate(ip)) {
     return res.status(429).json({ error: 'Too many attempts — try again in 15 minutes.' })
   }
