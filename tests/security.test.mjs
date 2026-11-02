@@ -61,3 +61,27 @@ test('HTTP security boundaries', async t => {
   child.kill()
   await once(child, 'exit')
 })
+
+test('account throttling survives VPN changes without blocking other accounts', async t => {
+  const child = spawn(process.execPath, ['server.js'], {
+    env: { ...process.env, PORT: '0', ADMINS_JSON: '[]', API_TOKENS_JSON: '[]', TRUSTED_PROXY_IPS: '::ffff:127.0.0.1', BLOCKED_CLIENT_IPS: '' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  t.after(() => child.kill())
+  const [chunk] = await once(child.stdout, 'data')
+  const base = `http://127.0.0.1:${chunk.toString().match(/port (\d+)/)[1]}`
+  for (let i = 0; i < 6; i++) {
+    const response = await fetch(base + '/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': `192.0.2.${i}` },
+      body: JSON.stringify({ username: 'target', password: 'wrong' }),
+    })
+    assert.equal(response.status, i < 5 ? 401 : 429)
+  }
+  assert.equal((await fetch(base + '/api/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '192.0.2.5' },
+    body: JSON.stringify({ username: 'different-account', password: 'wrong' }),
+  })).status, 401)
+  assert.equal((await fetch(base)).status, 200)
+  child.kill()
+  await once(child, 'exit')
+})
