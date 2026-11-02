@@ -16,21 +16,54 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3000
 
 const app = express()
-app.use(express.json())
+app.disable('x-powered-by')
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'same-origin')
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store')
+  res.on('finish', () => {
+    console.log(JSON.stringify({
+      event: 'request', time: new Date().toISOString(), method: req.method,
+      path: req.path.slice(0, 256), status: res.statusCode,
+      peer: req.socket.remoteAddress,
+      forwardedForUnverified: String(req.headers['x-forwarded-for'] || '').slice(0, 256),
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 256),
+    }))
+  })
+  next()
+})
+app.use(express.json({ limit: '100kb', inflate: false }))
+const route = handler => (req, res, next) => Promise.resolve().then(() => handler(req, res)).catch(next)
 
-app.get ('/api/data',        (req, res) => dataHandler(req, res))
-app.get ('/api/admin-data',  (req, res) => adminDataHandler(req, res))
-app.post('/api/save',        (req, res) => saveHandler(req, res))
-app.post('/api/login',       (req, res) => loginHandler(req, res))
-app.post('/api/logout',      (req, res) => logoutHandler(req, res))
-app.get ('/api/me',          (req, res) => meHandler(req, res))
-app.get ('/api/version',     (req, res) => versionHandler(req, res))
-app.post('/api/deploy',      (req, res) => deployHandler(req, res))
+app.get ('/api/data',        route(dataHandler))
+app.get ('/api/admin-data',  route(adminDataHandler))
+app.post('/api/save',        route(saveHandler))
+app.post('/api/login',       route(loginHandler))
+app.post('/api/logout',      route(logoutHandler))
+app.get ('/api/me',          route(meHandler))
+app.get ('/api/version',     route(versionHandler))
+app.post('/api/deploy',      route(deployHandler))
 
 // /admin and /admin/ both serve admin/index.html
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')))
 app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')))
 
-app.use(express.static(__dirname))
+// Only browser assets are public; never expose the repository or data directory.
+const publicFiles = [
+  'index.html', 'script.js', 'style.css', 'sw.js', 'manifest.json',
+  'favicon.svg', 'icon.svg', 'icon-192.svg', 'icon-512.svg',
+  'admin/index.html', 'admin/admin.js', 'admin/admin.css', 'lib/week.js',
+]
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
+for (const file of publicFiles) {
+  app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)))
+}
+app.use((req, res) => res.status(404).json({ error: 'Not found' }))
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err)
+  const status = err.status >= 400 && err.status < 500 ? err.status : 500
+  res.status(status).json({ error: status === 500 ? 'Internal server error' : 'Invalid request' })
+})
 
-app.listen(PORT, () => console.log(`Timetable running on port ${PORT}`))
+const server = app.listen(PORT, () => console.log(`Timetable running on port ${server.address().port}`))

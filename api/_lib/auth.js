@@ -19,7 +19,7 @@ export async function signSession(username) {
 
 export async function verifySession(token) {
   try {
-    const { payload } = await jwtVerify(token, secret())
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ['HS256'] })
     return payload.sub ?? null
   } catch {
     return null
@@ -54,7 +54,9 @@ export async function getAdminFromRequest(req) {
   const cookieHeader = req.headers['cookie'] || ''
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))
   if (match) {
-    const username = await verifySession(decodeURIComponent(match[1]))
+    let sessionToken
+    try { sessionToken = decodeURIComponent(match[1]) } catch { sessionToken = '' }
+    const username = await verifySession(sessionToken)
     if (username) return username
     // stale/invalid cookie — fall through to Bearer token
   }

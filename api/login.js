@@ -8,6 +8,9 @@ const WIN  = 15 * 60 * 1000   // 15 min
 
 function checkRate(ip) {
   const now  = Date.now()
+  for (const [key, value] of attempts) {
+    if (value.resetAt < now) attempts.delete(key)
+  }
   const rec  = attempts.get(ip)
   if (!rec || rec.resetAt < now) {
     attempts.set(ip, { count: 1, resetAt: now + WIN })
@@ -23,7 +26,8 @@ function clearRate(ip) { attempts.delete(ip) }
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const ip = (req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim()
+  // Proxy headers are attacker-controlled until the ingress trust chain is verified.
+  const ip = req.socket?.remoteAddress || 'unknown'
   if (!checkRate(ip)) {
     return res.status(429).json({ error: 'Too many attempts — try again in 15 minutes.' })
   }
