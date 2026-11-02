@@ -30,8 +30,8 @@
       <button class="clr-btn" id="btnTheme" title="Settings" aria-label="Open settings">SET</button>
       <div class="tog-group" role="group" aria-label="Week selector">
         <div class="tog-pill" id="pillWeek"></div>
-        <button class="tog-btn" id="btnOdd" onclick="setWeek('odd')" aria-pressed="true">ODD</button>
-        <button class="tog-btn" id="btnEven" onclick="setWeek('even')" aria-pressed="false">EVEN</button>
+        <button class="tog-btn" id="btnOdd" aria-pressed="true">ODD</button>
+        <button class="tog-btn" id="btnEven" aria-pressed="false">EVEN</button>
       </div>
     </div>
   </header>
@@ -47,7 +47,7 @@
 
   <div class="sw-update-bar" id="swUpdateBar" style="display:none">
     <span>UPDATE AVAILABLE</span>
-    <button class="sw-refresh-btn" onclick="location.reload()">&#8635; REFRESH</button>
+    <button class="sw-refresh-btn" id="swRefresh">&#8635; REFRESH</button>
   </div>
 
   <div class="now-bar" id="nowBar" style="display:none">
@@ -100,15 +100,15 @@
       <div class="bottom-toolbar-center">
         <div class="tog-group" id="bottomPaneToggle" style="display:none">
           <div class="tog-pill" id="pillBottomPane"></div>
-          <button class="tog-btn" id="btnPaneJournal" onclick="setBottomPane('journal')" aria-pressed="true">JOURNAL</button>
-          <button class="tog-btn" id="btnPaneEvents" onclick="setBottomPane('events')" aria-pressed="false">EVENTS</button>
-          <button class="tog-btn" id="btnPaneAnncs" onclick="setBottomPane('anncs')" aria-pressed="false">ANNCS</button>
+          <button class="tog-btn" id="btnPaneJournal" aria-pressed="true">JOURNAL</button>
+          <button class="tog-btn" id="btnPaneEvents" aria-pressed="false">EVENTS</button>
+          <button class="tog-btn" id="btnPaneAnncs" aria-pressed="false">ANNCS</button>
         </div>
       </div>
       <div class="tog-group bottom-layout-tog">
         <div class="tog-pill" id="pillLayout"></div>
-        <button class="tog-btn" id="btnLayoutSplit" onclick="setBottomLayout('split')" aria-pressed="true">SPLIT</button>
-        <button class="tog-btn" id="btnLayoutSingle" onclick="setBottomLayout('single')" aria-pressed="false">SINGLE</button>
+        <button class="tog-btn" id="btnLayoutSplit" aria-pressed="true">SPLIT</button>
+        <button class="tog-btn" id="btnLayoutSingle" aria-pressed="false">SINGLE</button>
       </div>
     </div>
     <div class="bottom-panes" id="bottomPanes">
@@ -324,19 +324,5 @@
   </div>
 
   <script src="script.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(reg => {
-        reg.addEventListener('updatefound', () => {
-          const w = reg.installing
-          w.addEventListener('statechange', () => {
-            if (w.state === 'installed' && navigator.serviceWorker.controller) {
-              document.getElementById('swUpdateBar').style.display = 'flex'
-            }
-          })
-        })
-      })
-    }
-  </script>
 </body>
 </html>

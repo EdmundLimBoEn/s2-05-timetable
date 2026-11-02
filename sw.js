@@ -1,4 +1,4 @@
-const CACHE    = 'tt-v12'
+const CACHE    = 'tt-v13-security'
 const PRECACHE = ['./', './index.html', './script.js', './style.css', './icon.svg', './favicon.svg', './manifest.json']
 
 self.addEventListener('install', e => {

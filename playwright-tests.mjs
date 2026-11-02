@@ -3,9 +3,11 @@ import { webkit } from 'playwright'
 const BASE  = process.env.E2E_BASE_URL  || 'https://testing.timetable.edmundlim.systems'
 const ADMIN = `${BASE}/admin`
 const CREDS = {
-  username: process.env.E2E_USERNAME || 'edmund',
-  password: process.env.E2E_PASSWORD || 'edmundlim',
+  username: process.env.E2E_USERNAME,
+  password: process.env.E2E_PASSWORD,
 }
+
+if (!CREDS.username || !CREDS.password) throw new Error('Set E2E_USERNAME and E2E_PASSWORD explicitly')
 
 let passed = 0, failed = 0
 const results = []

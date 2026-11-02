@@ -375,7 +375,7 @@ function hexToRgb(hex) {
 }
 
 function applyTheme(overrides) {
-  const full = { ...THEME_VARS, ...overrides }
+  const full = { ...THEME_VARS, ...sanitizeTheme(overrides) }
   const subjects = ['el','math','sci','hum','mt','sw','cce','hsl','hbl','cm','admt','ict']
 
   const [tr, tg, tb] = hexToRgb(full.teal)
@@ -401,18 +401,29 @@ function applyTheme(overrides) {
 
 function encodeTheme(overrides) {
   const delta = {}
-  for (const [k, v] of Object.entries(overrides)) {
+  for (const [k, v] of Object.entries(sanitizeTheme(overrides))) {
     if (v !== THEME_VARS[k]) delta[k] = v
   }
   if (!Object.keys(delta).length) return ''
   return btoa(JSON.stringify(delta)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
+function sanitizeTheme(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const safe = {}
+  for (const key of Object.keys(THEME_VARS)) {
+    if (Object.hasOwn(value, key) && typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key])) {
+      safe[key] = value[key]
+    }
+  }
+  return safe
+}
+
 function decodeTheme(code) {
-  if (!code) return {}
+  if (typeof code !== 'string' || code.length > 4096) return {}
   try {
     const padded = code.padEnd(code.length + (4 - code.length % 4) % 4, '=')
-    return JSON.parse(atob(padded.replace(/-/g, '+').replace(/_/g, '/')))
+    return sanitizeTheme(JSON.parse(atob(padded.replace(/-/g, '+').replace(/_/g, '/'))))
   } catch { return {} }
 }
 
@@ -930,7 +941,7 @@ function loadFromHash() {
   const cParam = params.get('c')
   if (cParam) {
     currentTheme = decodeTheme(cParam)
-    localStorage.setItem('theme', cParam)
+    localStorage.setItem('theme', encodeTheme(currentTheme))
   } else {
     const stored = localStorage.getItem('theme')
     if (stored) currentTheme = decodeTheme(stored)
@@ -1305,13 +1316,22 @@ function buildSettingsPanel() {
   // Colour grid
   const grid = document.getElementById('themeGrid')
   if (grid) {
-    const full = { ...THEME_VARS, ...currentTheme }
-    grid.innerHTML = Object.entries(THEME_VARS).map(([k]) => `
-      <label class="theme-row">
-        <span class="theme-var-name">${THEME_LABELS[k] || k}</span>
-        <input type="color" class="theme-color-input" data-key="${k}" value="${full[k]}">
-      </label>
-    `).join('')
+    const full = { ...THEME_VARS, ...sanitizeTheme(currentTheme) }
+    grid.replaceChildren()
+    for (const key of Object.keys(THEME_VARS)) {
+      const row = document.createElement('label')
+      row.className = 'theme-row'
+      const name = document.createElement('span')
+      name.className = 'theme-var-name'
+      name.textContent = THEME_LABELS[key] || key
+      const input = document.createElement('input')
+      input.type = 'color'
+      input.className = 'theme-color-input'
+      input.dataset.key = key
+      input.value = full[key]
+      row.append(name, input)
+      grid.appendChild(row)
+    }
     grid.querySelectorAll('input[type=color]').forEach(inp => {
       inp.addEventListener('input', e => {
         currentTheme[e.target.dataset.key] = e.target.value
@@ -1887,3 +1907,25 @@ wrap.addEventListener('scroll', () => {
     positionTimeLine()
   })
 }, { passive: true })
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const w = reg.installing
+          w.addEventListener('statechange', () => {
+            if (w.state === 'installed' && navigator.serviceWorker.controller) {
+              document.getElementById('swUpdateBar').style.display = 'flex'
+            }
+          })
+        })
+      })
+    }
+
+document.getElementById('btnOdd').addEventListener('click', () => setWeek('odd'))
+document.getElementById('btnEven').addEventListener('click', () => setWeek('even'))
+document.getElementById('btnPaneJournal').addEventListener('click', () => setBottomPane('journal'))
+document.getElementById('btnPaneEvents').addEventListener('click', () => setBottomPane('events'))
+document.getElementById('btnPaneAnncs').addEventListener('click', () => setBottomPane('anncs'))
+document.getElementById('btnLayoutSplit').addEventListener('click', () => setBottomLayout('split'))
+document.getElementById('btnLayoutSingle').addEventListener('click', () => setBottomLayout('single'))
+document.getElementById('swRefresh').addEventListener('click', () => location.reload())
